@@ -72,29 +72,27 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
 
-  <!-- 상단 네비게이션 헤더 -->
-  <header class="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-950 text-white shadow-xl sticky top-0 z-30">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <span class="text-3xl filter drop-shadow">✝</span>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-xl sm:text-2xl font-bold tracking-tight">Luce Chapel Bible Reading 현황</h1>
-            <span class="bg-blue-600/60 text-blue-200 border border-blue-400/30 text-[11px] font-semibold px-2 py-0.5 rounded-full">통계 대시보드</span>
-          </div>
-          <p id="subTitle" class="text-blue-300 text-xs sm:text-sm mt-0.5">믿음으로 읽어가는 성경통독 여정 분석</p>
-        </div>
-      </div>
-      
-      <div class="flex items-center gap-2">
-        <a href="https://greatacme.github.io/ReadBible2026/home.html" target="_blank" rel="noopener noreferrer"
-           class="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-semibold px-3 py-2 rounded-xl backdrop-blur transition shadow-sm">
-          <span>🏠 성경통독 홈</span>
-          <span class="text-blue-300">↗</span>
-        </a>
-      </div>
+  <!-- 제목만 스크롤 중 고정 -->
+  <header class="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-950 text-white shadow-sm sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
+      <h1 class="text-base sm:text-xl font-bold tracking-tight">Luce Chapel Bible Reading 현황</h1>
     </div>
   </header>
+
+  <!-- 설명과 홈 링크는 일반 문서 흐름으로 스크롤 -->
+  <div class="bg-blue-950 text-white border-t border-white/10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <span class="bg-blue-600/60 text-blue-200 border border-blue-400/30 text-[11px] font-semibold px-2 py-0.5 rounded-full">통계 대시보드</span>
+        <p id="subTitle" class="text-blue-300 text-xs sm:text-sm">믿음으로 읽어가는 성경통독 여정 분석</p>
+      </div>
+      <a href="https://greatacme.github.io/ReadBible2026/home.html" target="_blank" rel="noopener noreferrer"
+         class="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-semibold px-3 py-2 rounded-xl transition">
+        <span>🏠 성경통독 홈</span>
+        <span class="text-blue-300">↗</span>
+      </a>
+    </div>
+  </div>
 
   <!-- DB 미설정 시 안내 배너 (RPC 미생성 감지 시 자동 표시) -->
   <div id="mockAlertBanner" class="hidden bg-amber-50 border-b border-amber-200 px-4 py-2.5 text-xs text-amber-900 transition">
