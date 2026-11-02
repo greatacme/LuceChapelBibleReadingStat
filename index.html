@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon_io/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon_io/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png">
+  <link rel="icon" type="image/x-icon" href="favicon_io/favicon.ico">
+  <title>Luce Chapel Bible Reading 현황 — 성경통독 종합 통계</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+
+  <!-- 상단 네비게이션 헤더 -->
+  <header class="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-950 text-white shadow-xl sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl filter drop-shadow">✝</span>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl sm:text-2xl font-bold tracking-tight">Luce Chapel Bible Reading 현황</h1>
+            <span class="bg-blue-600/60 text-blue-200 border border-blue-400/30 text-[11px] font-semibold px-2 py-0.5 rounded-full">통계 대시보드</span>
+          </div>
+          <p id="subTitle" class="text-blue-300 text-xs sm:text-sm mt-0.5">믿음으로 읽어가는 성경통독 여정 분석</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <a href="https://greatacme.github.io/ReadBible2026/home.html" target="_blank" rel="noopener noreferrer"
+           class="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-semibold px-3 py-2 rounded-xl backdrop-blur transition shadow-sm">
+          <span>🏠 성경통독 홈</span>
+          <span class="text-blue-300">↗</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- DB 미설정 시 안내 배너 (RPC 미생성 감지 시 자동 표시) -->
+  <div id="mockAlertBanner" class="hidden bg-amber-50 border-b border-amber-200 px-4 py-2.5 text-xs text-amber-900 transition">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="text-base">ℹ️</span>
+        <span class="font-medium">
+          Supabase에 통계 함수(<code class="font-bold">get_bible_reading_stats</code>)가 아직 생성되지 않아 <strong>[시안용 샘플 데이터]</strong>로 미리보기 중입니다.
+          <code class="bg-amber-100 px-1 py-0.5 rounded">supabase_migration_stat_rpc.sql</code>을 SQL Editor에서 실행하시면 즉시 실제 데이터로 연결됩니다.
+        </span>
+      </div>
+      <button onclick="document.getElementById('mockAlertBanner').classList.add('hidden')" class="text-amber-700 hover:text-amber-950 font-bold px-1.5 py-0.5">✕</button>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
+
+    <!-- 0. 상단 컨트롤 패널 (시즌 선택 / 기준일자 / 새로고침) -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 sm:p-5">
+      <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+        
+        <div class="flex flex-wrap items-center gap-4 flex-1">
+          <!-- 시즌 선택 (ministry) -->
+          <div class="flex items-center gap-2 flex-1 min-w-[280px] sm:min-w-[420px]">
+            <label for="ministrySelect" class="text-xs font-bold text-slate-500 whitespace-nowrap flex items-center gap-1">
+              <span>🏛 시즌 선택</span>
+            </label>
+            <select id="ministrySelect"
+              class="w-full sm:w-[420px] md:w-[480px] max-w-full bg-slate-50 border border-slate-300 hover:border-blue-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-slate-800 text-sm font-semibold rounded-xl px-3.5 py-2.5 transition outline-none truncate">
+              <option value="0">불러오는 중...</option>
+            </select>
+          </div>
+
+          <!-- 기준일자 캘린더 (default: 오늘) -->
+          <div class="flex items-center gap-2 min-w-[200px]">
+            <label for="baseDatePicker" class="text-xs font-bold text-slate-500 whitespace-nowrap flex items-center gap-1">
+              <span>📅 기준일자</span>
+            </label>
+            <input id="baseDatePicker" type="date"
+              class="bg-slate-50 border border-slate-300 hover:border-blue-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-slate-800 text-sm font-semibold rounded-xl px-3 py-2 transition outline-none"/>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5">
+          <button id="refreshBtn" onclick="loadDashboardData()"
+            class="inline-flex items-center gap-1.5 bg-blue-800 hover:bg-blue-900 active:scale-95 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-sm">
+            <svg id="refreshIcon" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            <span>조회 / 새로고침</span>
+          </button>
+          <div id="statusBadge" class="text-[11px] font-medium text-slate-600 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl whitespace-nowrap">
+            KST 기준일 집계
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 1. 개요 (Overview KPI 카드 6종) -->
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+          <span>📊 통독 개요</span>
+          <span class="text-xs font-normal text-slate-600">record 등록 및 기준일자 기준 핵심 지표</span>
+        </h2>
+        <div id="fullFinishBadge" class="hidden sm:inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full">
+          <span>🏆 전체 완독</span>
+          <span id="overviewAllFinishersVal">-</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        
+        <!-- 기간 / 일수 -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-col justify-between hover:border-blue-300 transition">
+          <div class="flex items-center justify-between text-slate-600 mb-2">
+            <span class="text-xs font-semibold">기간 / 일수</span>
+            <span class="text-lg">🗓️</span>
+          </div>
+          <div>
+            <div class="flex items-baseline gap-1">
+              <span id="kpiElapsedDays" class="text-2xl font-extrabold text-blue-900">-</span>
+              <span class="text-xs font-semibold text-slate-600">일간</span>
+            </div>
+            <p id="kpiDateRange" class="text-[11px] text-slate-600 mt-1 truncate font-medium">최초기록 ~ 기준일</p>
+          </div>
+        </div>
+
+        <!-- 참여 인원수 -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-col justify-between hover:border-blue-300 transition">
+          <div class="flex items-center justify-between text-slate-600 mb-2">
+            <span class="text-xs font-semibold">참여 인원수</span>
+            <span class="text-lg">👥</span>
+          </div>
+          <div>
+            <div class="flex items-baseline gap-1">
+              <span id="kpiTotalUsers" class="text-2xl font-extrabold text-blue-900">-</span>
+              <span class="text-xs font-semibold text-slate-600">명</span>
+            </div>
+            <p id="kpiActiveUsers" class="text-[11px] text-emerald-600 font-medium mt-1">활동 인원: - 명</p>
+          </div>
+        </div>
+
+        <!-- 전체 읽은 장수 -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-col justify-between hover:border-blue-300 transition">
+          <div class="flex items-center justify-between text-slate-600 mb-2">
+            <span class="text-xs font-semibold">전체 읽은 장수</span>
+            <span class="text-lg">📖</span>
+          </div>
+          <div>
+            <div class="flex items-baseline gap-1">
+              <span id="kpiTotalChapters" class="text-2xl font-extrabold text-blue-900">-</span>
+              <span class="text-xs font-semibold text-slate-600">장</span>
+            </div>
+            <p id="kpiTargetPct" class="text-[11px] text-slate-600 mt-1">누적 완독 장수</p>
+          </div>
+        </div>
+
+        <!-- 1인당 일평균 읽은 장수 -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-col justify-between hover:border-blue-300 transition">
+          <div class="flex items-center justify-between text-slate-600 mb-2">
+            <span class="text-xs font-semibold">1인당 일평균</span>
+            <span class="text-lg">⚡</span>
+          </div>
+          <div>
+            <div class="flex items-baseline gap-1">
+              <span id="kpiDailyAvg" class="text-2xl font-extrabold text-indigo-900">-</span>
+              <span class="text-xs font-semibold text-slate-600">장/일·인</span>
+            </div>
+            <p class="text-[11px] text-slate-600 mt-1">1일 평균 통독 분량</p>
+          </div>
+        </div>
+
+        <!-- 구약 완독자 수 / 완독률 -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-200/70 bg-gradient-to-br from-white to-amber-50/40 flex flex-col justify-between hover:border-amber-400 transition">
+          <div class="flex items-center justify-between text-amber-800 mb-2">
+            <span class="text-xs font-bold">구약 완독자 (929장)</span>
+            <span class="text-lg">📜</span>
+          </div>
+          <div>
+            <div class="flex items-baseline gap-1.5">
+              <span id="kpiOtFinishers" class="text-2xl font-extrabold text-amber-950">-</span>
+              <span class="text-xs font-semibold text-amber-800">명</span>
+              <span id="kpiOtRate" class="text-xs font-bold text-amber-600 ml-auto">(-%)</span>
+            </div>
+            <div class="w-full bg-amber-100 h-1.5 rounded-full mt-2 overflow-hidden">
+              <div id="kpiOtProgressBar" class="bg-amber-600 h-full rounded-full transition-all duration-700" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 신약 완독자 수 / 완독률 -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-emerald-200/70 bg-gradient-to-br from-white to-emerald-50/40 flex flex-col justify-between hover:border-emerald-400 transition">
+          <div class="flex items-center justify-between text-emerald-800 mb-2">
+            <span class="text-xs font-bold">신약 완독자 (260장)</span>
+            <span class="text-lg">✝️</span>
+          </div>
+          <div>
+            <div class="flex items-baseline gap-1.5">
+              <span id="kpiNtFinishers" class="text-2xl font-extrabold text-emerald-950">-</span>
+              <span class="text-xs font-semibold text-emerald-800">명</span>
+              <span id="kpiNtRate" class="text-xs font-bold text-emerald-600 ml-auto">(-%)</span>
+            </div>
+            <div class="w-full bg-emerald-100 h-1.5 rounded-full mt-2 overflow-hidden">
+              <div id="kpiNtProgressBar" class="bg-emerald-600 h-full rounded-full transition-all duration-700" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 2. 일별 현황 (일자별 막대그래프 + Top 5 강조 + 월별/요일별/시간대별 차트) -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+          <span>📈 일별 및 패턴 현황</span>
+          <span class="text-xs font-normal text-slate-600">일자별(TOP 5 강조) • 월별 • 요일별 • 시간대별 통독 패턴</span>
+        </h2>
+      </div>
+
+      <!-- 상단: 일자별 막대그래프 (TOP 5 황금색 강조) + Top 5 / Bottom 5 랭킹 카드 -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        
+        <!-- 일자별 차트 (막대그래프) -->
+        <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                <span>일자별 읽은 장수 추이</span>
+                <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">막대그래프</span>
+              </h3>
+              <p class="text-xs text-slate-600">TOP 5 최다 통독일은 황금색 막대 및 배지로 강조 표시됩니다.</p>
+            </div>
+            <div class="flex items-center gap-3 text-[11px]">
+              <span class="inline-flex items-center gap-1 font-medium text-slate-600">
+                <span class="w-2.5 h-2.5 rounded-sm bg-blue-600 inline-block"></span>
+                일반 일자
+              </span>
+              <span class="inline-flex items-center gap-1 font-bold text-amber-600">
+                <span class="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block"></span>
+                👑 TOP 5 날짜
+              </span>
+            </div>
+          </div>
+          <div class="relative flex-1 min-h-[280px] sm:min-h-[320px]">
+            <canvas id="dailyTrendChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 가장 많이 / 적게 읽은 날 TOP 5 카드 -->
+        <div class="space-y-4 flex flex-col">
+          
+          <!-- 가장 많이 읽은 날 top 5 -->
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex-1">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <span class="text-amber-500">🔥</span>
+                <span>가장 많이 읽은 날 TOP 5</span>
+              </h4>
+              <span class="text-[11px] text-amber-600 font-bold">차트 황금색 표시</span>
+            </div>
+            <div id="topDaysList" class="space-y-2">
+              <p class="text-xs text-slate-600 text-center py-4">불러오는 중...</p>
+            </div>
+          </div>
+
+          <!-- 가장 적게 읽은 날 top 5 -->
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex-1">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <span class="text-indigo-500">🌱</span>
+                <span>가장 적게 읽은 날 TOP 5</span>
+              </h4>
+              <span class="text-[11px] text-slate-600">활동일 기준</span>
+            </div>
+            <div id="bottomDaysList" class="space-y-2">
+              <p class="text-xs text-slate-600 text-center py-4">불러오는 중...</p>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- 하단: 월별 차트 + 요일별 차트 + 시간대별 차트 (3열 배치) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        
+        <!-- 월별 차트 (막대 위 숫자 표시) -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">월별 통독량</h3>
+              <p class="text-xs text-slate-600">월별 누적 완료 장수 (수치 표시)</p>
+            </div>
+            <span class="text-base">📅</span>
+          </div>
+          <div class="relative flex-1 min-h-[220px]">
+            <canvas id="monthlyChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 요일별 차트 (막대 위 숫자 표시) -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">요일별 통독 패턴</h3>
+              <p class="text-xs text-slate-600">일요일~토요일 요일별 통독량 (수치 표시)</p>
+            </div>
+            <span class="text-base">🕒</span>
+          </div>
+          <div class="relative flex-1 min-h-[220px]">
+            <canvas id="dowChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 시간대별 차트 (신규 추가: 00시 ~ 23시) -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col md:col-span-2 lg:col-span-1">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">시간대별 통독 패턴</h3>
+              <p class="text-xs text-slate-600">하루 중 성경을 많이 읽는 시간대 (0시~23시)</p>
+            </div>
+            <span class="text-base">⏰</span>
+          </div>
+          <div class="relative flex-1 min-h-[220px]">
+            <canvas id="hourlyChart"></canvas>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 3. 조별 통독 현황 (차트 2종 + 완독률 표) -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+          <span>👥 조별(그룹별) 통독 현황</span>
+          <span class="text-xs font-normal text-slate-600">공동체별 완독률 표 및 누적 통독량 비교</span>
+        </h2>
+      </div>
+
+      <!-- 조별 완독률 현황 표 (행: 조 / 열: 전체, 구약, 신약) -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-1.5">
+              <span>📋 조별 완독률 현황</span>
+              <span class="text-xs bg-blue-50 text-blue-800 font-semibold px-2 py-0.5 rounded">완독 100% 기준</span>
+            </h3>
+            <p class="text-xs text-slate-600 mt-0.5">각 조별 인원 대비 전체(1,189장) • 구약(929장) • 신약(260장) 100% 완독 회원수 및 완독률</p>
+          </div>
+          <div class="text-[11px] text-slate-600 font-medium">
+            * 완독률 = (완독 100% 회원수 ÷ 조원 수) × 100
+          </div>
+        </div>
+
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50/90 text-slate-700 text-xs font-bold border-y border-slate-200">
+                <th class="py-3 px-4 w-12 text-center">순번</th>
+                <th class="py-3 px-4 min-w-[140px]">조 (공동체)</th>
+                <th class="py-3 px-4 text-center min-w-[80px]">조원 수</th>
+                <th class="py-3 px-4 text-center min-w-[160px] bg-blue-50/60 text-blue-950 border-x border-slate-200/70">
+                  <div class="flex items-center justify-center gap-1">
+                    <span>🏆 전체 완독</span>
+                    <span class="text-[10px] text-blue-700 font-normal">(1,189장)</span>
+                  </div>
+                </th>
+                <th class="py-3 px-4 text-center min-w-[160px] bg-amber-50/60 text-amber-950 border-r border-slate-200/70">
+                  <div class="flex items-center justify-center gap-1">
+                    <span>📜 구약 완독</span>
+                    <span class="text-[10px] text-amber-800 font-normal">(929장)</span>
+                  </div>
+                </th>
+                <th class="py-3 px-4 text-center min-w-[160px] bg-emerald-50/60 text-emerald-950">
+                  <div class="flex items-center justify-center gap-1">
+                    <span>✝️ 신약 완독</span>
+                    <span class="text-[10px] text-emerald-800 font-normal">(260장)</span>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="groupFinishersTableBody" class="divide-y divide-slate-100 text-xs">
+              <tr>
+                <td colspan="6" class="py-6 text-center text-slate-600">조별 완독 데이터를 불러오는 중입니다...</td>
+              </tr>
+            </tbody>
+            <tfoot id="groupFinishersTableFoot" class="bg-slate-50 font-bold text-xs border-t-2 border-slate-300">
+              <!-- 합계 요약 행 자동 생성 -->
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- 조별 총 장수 vs 1인당 평균 장수 차트 (2열 배치) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        
+        <!-- 그룹별 총 읽은 장수 차트 -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">조별 총 읽은 장수</h3>
+              <p class="text-xs text-slate-600">각 조별로 읽은 전체 누적 장 수 순위 (수치 표시)</p>
+            </div>
+            <span class="text-xs bg-blue-50 text-blue-800 font-semibold px-2 py-0.5 rounded">합계 기준</span>
+          </div>
+          <div class="relative flex-1 min-h-[300px]">
+            <canvas id="groupTotalChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 그룹별 1인당 읽은 장수 차트 -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">조별 1인당 평균 읽은 장수</h3>
+              <p class="text-xs text-slate-600">조원 수 편차를 보정한 실질적 통독 열정 지표 (수치 표시)</p>
+            </div>
+            <span class="text-xs bg-indigo-50 text-indigo-800 font-semibold px-2 py-0.5 rounded">1인 평균</span>
+          </div>
+          <div class="relative flex-1 min-h-[300px]">
+            <canvas id="groupAvgChart"></canvas>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 4. 개인 통독 현황 (완독자 명예의 전당) -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+            <span>🏅 개인 통독 현황</span>
+            <span class="text-xs font-normal text-slate-600">완독을 달성한 은혜의 명단</span>
+          </h2>
+          <p class="text-xs text-slate-600 mt-0.5">성경 전체 및 구약·신약 완독자 명단</p>
+        </div>
+
+        <!-- 검색 필터 -->
+        <div class="flex items-center gap-2">
+          <div class="relative w-full sm:w-48">
+            <input id="finisherSearchInput" type="text" placeholder="성도 이름 검색..."
+              class="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl pl-8 pr-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200"/>
+            <span class="absolute left-2.5 top-2.5 text-slate-600 text-xs">🔍</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 탭 선택 바 (전체 / 구약 / 신약) -->
+      <div class="flex gap-2 p-1 bg-slate-100/80 rounded-xl">
+        <button id="tabAll" onclick="switchFinisherTab('all')"
+          class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition text-white bg-blue-900 shadow-sm">
+          🏆 전체 완독 (<span id="tabAllCount">0</span>명)
+        </button>
+        <button id="tabOt" onclick="switchFinisherTab('ot')"
+          class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition text-slate-600 hover:text-amber-900 hover:bg-amber-50">
+          📜 구약 완독 (<span id="tabOtCount">0</span>명)
+        </button>
+        <button id="tabNt" onclick="switchFinisherTab('nt')"
+          class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition text-slate-600 hover:text-emerald-900 hover:bg-emerald-50">
+          ✝️ 신약 완독 (<span id="tabNtCount">0</span>명)
+        </button>
+      </div>
+
+      <!-- 완독자 목록 테이블 -->
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50/80 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-y border-slate-200">
+              <th class="py-2.5 px-4 text-center w-16">순번</th>
+              <th class="py-2.5 px-4">성도 (닉네임)</th>
+              <th class="py-2.5 px-4">소속 조</th>
+              <th class="py-2.5 px-4 text-right">완료 장수</th>
+              <th class="py-2.5 px-4 text-right">완독 달성일</th>
+            </tr>
+          </thead>
+          <tbody id="finishersTableBody" class="divide-y divide-slate-100 text-xs font-medium">
+            <tr>
+              <td colspan="5" class="py-8 text-center text-slate-600">완독자 데이터를 불러오는 중입니다...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 푸터 -->
+  <footer class="bg-white border-t border-slate-200/80 py-6 mt-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-slate-700">✝ 연세대학교회 성경통독</span>
+        <span>•</span>
+        <span>Luce Chapel Bible Reading</span>
+      </div>
+      <div>
+        데이터베이스: ReadBible2026 Supabase 연동 • ver.1.2.2026.1102
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // =========================================================================
+    // Chart.js 막대 위 숫자 직접 표시 플러그인
+    // =========================================================================
+    const barValueLabelsPlugin = {
+      id: 'barValueLabels',
+      afterDatasetsDraw(chart, args, options) {
+        if (!options || options.display === false) return
+        const { ctx } = chart
+        const isHorizontal = chart.config.options.indexAxis === 'y'
+
+        chart.data.datasets.forEach((dataset, i) => {
+          const meta = chart.getDatasetMeta(i)
+          meta.data.forEach((bar, index) => {
+            const val = dataset.data[index]
+            if (val === undefined || val === null || val === 0) return
+            const text = Number(val).toLocaleString()
+
+            ctx.save()
+            ctx.font = options.font || 'bold 10px Pretendard, sans-serif'
+            ctx.fillStyle = options.color || '#334155'
+
+            if (isHorizontal) {
+              ctx.textAlign = 'left'
+              ctx.textBaseline = 'middle'
+              ctx.fillText(text, bar.x + 5, bar.y)
+            } else {
+              ctx.textAlign = 'center'
+              ctx.textBaseline = 'bottom'
+              ctx.fillText(text, bar.x, bar.y - 3)
+            }
+            ctx.restore()
+          })
+        })
+      }
+    }
+    Chart.register(barValueLabelsPlugin)
+
+    // =========================================================================
+    // Supabase 클라이언트 초기화
+    // =========================================================================
+    const { createClient } = supabase
+    const sb = createClient(
+      'https://wwnohpprdjnvdjccednr.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3bm9ocHByZGpudmRqY2NlZG5yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MTY1NzYsImV4cCI6MjA4OTM5MjU3Nn0.GYpMk0VTi4lSsrWtiqeW5AZ3BulCUv3lg13_VBJeyd4'
+    )
+
+    // 전역 상태 변수
+    let currentMinistryCd = '0'
+    let currentBaseDate = ''
+    let currentFinisherTab = 'all'
+    let dashboardData = null
+    let activeCharts = {}
+
+    // KST 오늘 날짜 문자열 반환 (YYYY-MM-DD)
+    function getTodayKST() {
+      const parts = new Intl.DateTimeFormat('ko-KR', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).formatToParts(new Date())
+      const y = parts.find(p => p.type === 'year').value
+      const m = parts.find(p => p.type === 'month').value
+      const d = parts.find(p => p.type === 'day').value
+      return `${y}-${m}-${d}`
+    }
+
+    // =========================================================================
+    // 초기화 및 이벤트 리스너
+    // =========================================================================
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 1. 기준일자 캘린더 기본값: 오늘 KST
+      currentBaseDate = getTodayKST()
+      const datePicker = document.getElementById('baseDatePicker')
+      datePicker.value = currentBaseDate
+      datePicker.addEventListener('change', (e) => {
+        currentBaseDate = e.target.value || getTodayKST()
+        loadDashboardData()
+      })
+
+      // 2. 검색 입력창 이벤트
+      document.getElementById('finisherSearchInput').addEventListener('input', () => {
+        renderFinishersTable()
+      })
+
+      // 3. 시즌 목록(COMM_CODE) 로드
+      await loadMinistries()
+
+      // 4. 대시보드 데이터 조회
+      await loadDashboardData()
+    })
+
+    // 시즌 콤보박스 로드 (COMM_CODE)
+    async function loadMinistries() {
+      const select = document.getElementById('ministrySelect')
+      try {
+        const { data: list, error } = await sb
+          .from('COMM_CODE')
+          .select('code_cd, code_nm, description')
+          .eq('code_group', 'ministry')
+          .order('code_cd', { ascending: true })
+
+        if (error || !list || list.length === 0) throw error || new Error('No ministries')
+
+        select.innerHTML = list.map(item => `
+          <option value="${item.code_cd}" ${item.code_cd === currentMinistryCd ? 'selected' : ''}>
+            ${item.code_nm} ${item.description ? '(' + item.description + ')' : ''}
+          </option>
+        `).join('')
+      } catch (err) {
+        console.warn('COMM_CODE 로드 실패, 기본값 사용:', err)
+        select.innerHTML = `
+          <option value="0" selected>2026 연세대학교회 성경통독 (연세대학교회 기본)</option>
+          <option value="1">2026 연세대학교회 성경통독 (연세대학교 보건대학원 & 융합보건대학원)</option>
+          <option value="2702">2027 연세대학교회 성경통독 (2027 기본)</option>
+        `
+      }
+
+      select.addEventListener('change', (e) => {
+        currentMinistryCd = e.target.value
+        loadDashboardData()
+      })
+    }
+
+    // =========================================================================
+    // 대시보드 데이터 로드 (Supabase RPC 호출 또는 샘플 데이터 폴백)
+    // =========================================================================
+    async function loadDashboardData() {
+      const refreshIcon = document.getElementById('refreshIcon')
+      refreshIcon.classList.add('animate-spin')
+
+      try {
+        const { data, error } = await sb.rpc('get_bible_reading_stats', {
+          p_ministry_cd: currentMinistryCd,
+          p_base_date: currentBaseDate
+        })
+
+        if (error) {
+          console.warn('RPC get_bible_reading_stats 호출 실패 -> 샘플 데이터 모드 활성화:', error)
+          document.getElementById('mockAlertBanner').classList.remove('hidden')
+          dashboardData = generateMockStatsData(currentMinistryCd, currentBaseDate)
+        } else if (!data) {
+          document.getElementById('mockAlertBanner').classList.remove('hidden')
+          dashboardData = generateMockStatsData(currentMinistryCd, currentBaseDate)
+        } else {
+          document.getElementById('mockAlertBanner').classList.add('hidden')
+          dashboardData = data
+        }
+      } catch (err) {
+        console.error('데이터 조회 중 오류 발생:', err)
+        document.getElementById('mockAlertBanner').classList.remove('hidden')
+        dashboardData = generateMockStatsData(currentMinistryCd, currentBaseDate)
+      } finally {
+        refreshIcon.classList.remove('animate-spin')
+      }
+
+      // 화면 렌더링
+      renderDashboard()
+    }
+
+    // =========================================================================
+    // 대시보드 화면 렌더링 메인 함수
+    // =========================================================================
+    function renderDashboard() {
+      if (!dashboardData) return
+
+      const { overview, daily_trend, top_days, bottom_days, monthly, day_of_week, hourly, groups, finishers } = dashboardData
+
+      // 1. KPI 개요 카드
+      document.getElementById('kpiElapsedDays').textContent = Number(overview.elapsed_days || 0).toLocaleString()
+      document.getElementById('kpiDateRange').textContent = `${overview.start_date || ''} ~ ${overview.end_date || currentBaseDate}`
+      document.getElementById('kpiTotalUsers').textContent = Number(overview.total_users || 0).toLocaleString()
+      document.getElementById('kpiActiveUsers').textContent = `활동 인원: ${Number(overview.active_users || 0).toLocaleString()}명`
+      document.getElementById('kpiTotalChapters').textContent = Number(overview.total_read_chapters || 0).toLocaleString()
+      document.getElementById('kpiDailyAvg').textContent = Number(overview.daily_avg_per_user || 0).toFixed(2)
+
+      // 구약 완독자
+      document.getElementById('kpiOtFinishers').textContent = Number(overview.ot_finishers_cnt || 0).toLocaleString()
+      document.getElementById('kpiOtRate').textContent = `${Number(overview.ot_rate || 0).toFixed(1)}%`
+      document.getElementById('kpiOtProgressBar').style.width = `${Math.min(100, overview.ot_rate || 0)}%`
+
+      // 신약 완독자
+      document.getElementById('kpiNtFinishers').textContent = Number(overview.nt_finishers_cnt || 0).toLocaleString()
+      document.getElementById('kpiNtRate').textContent = `${Number(overview.nt_rate || 0).toFixed(1)}%`
+      document.getElementById('kpiNtProgressBar').style.width = `${Math.min(100, overview.nt_rate || 0)}%`
+
+      // 전체 완독 뱃지
+      document.getElementById('overviewAllFinishersVal').textContent = `${overview.all_finishers_cnt || 0}명 (${overview.all_rate || 0}%)`
+
+      // 2. Top 5 / Bottom 5 렌더링
+      renderTopBottomDays(top_days || [], bottom_days || [])
+
+      // 3. 차트 렌더링
+      renderDailyTrendBarChart(daily_trend || [], top_days || [])
+      renderMonthlyChart(monthly || [])
+      renderDowChart(day_of_week || [])
+      renderHourlyChart(hourly || [])
+      renderGroupCharts(groups || [])
+
+      // 4. 조별 완독률 현황 표 렌더링 (신규 추가)
+      renderGroupFinishersTable(groups || [], overview || {})
+
+      // 5. 완독자 탭 카운트 및 목록 렌더링
+      const allList = finishers?.all || []
+      const otList = finishers?.ot || []
+      const ntList = finishers?.nt || []
+
+      document.getElementById('tabAllCount').textContent = allList.length
+      document.getElementById('tabOtCount').textContent = otList.length
+      document.getElementById('tabNtCount').textContent = ntList.length
+
+      renderFinishersTable()
+    }
+
+    // =========================================================================
+    // 가장 많이 / 적게 읽은 날 TOP 5 렌더링
+    // =========================================================================
+    function renderTopBottomDays(topDays, bottomDays) {
+      const topListEl = document.getElementById('topDaysList')
+      const bottomListEl = document.getElementById('bottomDaysList')
+
+      if (topDays.length === 0) {
+        topListEl.innerHTML = '<p class="text-xs text-slate-600 text-center py-2">기록이 없습니다.</p>'
+      } else {
+        topListEl.innerHTML = topDays.map((d, idx) => `
+          <div class="flex items-center justify-between p-2 rounded-xl bg-amber-50/50 border border-amber-200/60 hover:border-amber-400 transition">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                idx === 0 ? 'bg-amber-500 text-white shadow-sm' :
+                idx === 1 ? 'bg-amber-400 text-amber-950' :
+                idx === 2 ? 'bg-amber-300 text-amber-900' : 'bg-amber-200 text-amber-800'
+              }">
+                ${idx + 1}
+              </span>
+              <span class="text-xs font-bold text-slate-800">${d.date}</span>
+              <span class="text-[11px] text-amber-800 font-semibold">(${d.dow}요일)</span>
+            </div>
+            <span class="text-xs font-extrabold text-blue-900">${Number(d.chapters).toLocaleString()} <span class="text-[10px] font-normal text-slate-600">장</span></span>
+          </div>
+        `).join('')
+      }
+
+      if (bottomDays.length === 0) {
+        bottomListEl.innerHTML = '<p class="text-xs text-slate-600 text-center py-2">기록이 없습니다.</p>'
+      } else {
+        bottomListEl.innerHTML = bottomDays.map((d, idx) => `
+          <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-300 transition">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-[10px] font-semibold text-slate-600">
+                ${idx + 1}
+              </span>
+              <span class="text-xs font-semibold text-slate-800">${d.date}</span>
+              <span class="text-[11px] text-slate-600 font-medium">(${d.dow}요일)</span>
+            </div>
+            <span class="text-xs font-bold text-slate-700">${Number(d.chapters).toLocaleString()} <span class="text-[10px] font-normal text-slate-600">장</span></span>
+          </div>
+        `).join('')
+      }
+    }
+
+    // =========================================================================
+    // Chart.js 차트 생성 함수들
+    // =========================================================================
+    function destroyChart(name) {
+      if (activeCharts[name]) {
+        activeCharts[name].destroy()
+        delete activeCharts[name]
+      }
+    }
+
+    // 1. 일자별 차트 (막대그래프 + TOP 5 날짜 황금색 강조 및 배지 표시)
+    function renderDailyTrendBarChart(data, topDays) {
+      destroyChart('dailyTrend')
+      const ctx = document.getElementById('dailyTrendChart').getContext('2d')
+      
+      const labels = data.map(d => d.date)
+      const values = data.map(d => d.chapters)
+
+      // TOP 5 날짜 매핑 (날짜 -> 순위 1~5)
+      const topMap = {}
+      topDays.forEach(t => {
+        topMap[t.date] = t.rank
+      })
+
+      // 막대 배경색 및 테두리 설정 (TOP 5는 황금색, 일반은 파란색)
+      const backgroundColors = labels.map(d => topMap[d] ? '#f59e0b' : '#3b82f6')
+      const borderColors = labels.map(d => topMap[d] ? '#b45309' : '#1d4ed8')
+      const borderWidths = labels.map(d => topMap[d] ? 2 : 0)
+
+      activeCharts.dailyTrend = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: '일일 완독 장수',
+            data: values,
+            backgroundColor: backgroundColors,
+            borderColor: borderColors,
+            borderWidth: borderWidths,
+            borderRadius: 4,
+            hoverBackgroundColor: labels.map(d => topMap[d] ? '#d97706' : '#1e40af')
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            barValueLabels: { display: false },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              titleFont: { size: 12, weight: 'bold' },
+              bodyFont: { size: 12 },
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                title: (items) => {
+                  const d = items[0].label
+                  const rank = topMap[d]
+                  return rank ? `👑 TOP ${rank} (${d})` : d
+                },
+                label: (c) => `완료: ${Number(c.raw).toLocaleString()} 장`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { maxTicksLimit: 14, font: { size: 10 } }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: '#f1f5f9' },
+              ticks: { font: { size: 10 } }
+            }
+          }
+        }
+      })
+    }
+
+    // 2. 월별 차트 (Bar Chart + 막대 위 숫자 표시)
+    function renderMonthlyChart(data) {
+      destroyChart('monthly')
+      const ctx = document.getElementById('monthlyChart').getContext('2d')
+      activeCharts.monthly = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.map(d => d.month),
+          datasets: [{
+            label: '월별 완독 장수',
+            data: data.map(d => d.chapters),
+            backgroundColor: '#3b82f6',
+            borderRadius: 6,
+            hoverBackgroundColor: '#1d4ed8'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { top: 18 } },
+          plugins: {
+            legend: { display: false },
+            barValueLabels: { display: true, color: '#1e3a8a', font: 'bold 10px Pretendard' },
+            tooltip: {
+              callbacks: {
+                label: (c) => `${Number(c.raw).toLocaleString()} 장`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: { beginAtZero: true, grid: { color: '#f8fafc' }, ticks: { font: { size: 10 } } }
+          }
+        }
+      })
+    }
+
+    // 3. 요일별 차트 (Bar Chart + 막대 위 숫자 표시)
+    function renderDowChart(data) {
+      destroyChart('dow')
+      const ctx = document.getElementById('dowChart').getContext('2d')
+      const colors = ['#ef4444', '#3b82f6', '#3b82f6', '#3b82f6', '#3b82f6', '#3b82f6', '#10b981']
+
+      activeCharts.dow = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.map(d => `${d.day}요일`),
+          datasets: [{
+            label: '요일별 읽은 장수',
+            data: data.map(d => d.chapters),
+            backgroundColor: colors,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { top: 18 } },
+          plugins: {
+            legend: { display: false },
+            barValueLabels: { display: true, color: '#0f172a', font: 'bold 10px Pretendard' },
+            tooltip: {
+              callbacks: {
+                label: (c) => `${Number(c.raw).toLocaleString()} 장`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11, weight: 'bold' } } },
+            y: { beginAtZero: true, grid: { color: '#f8fafc' }, ticks: { font: { size: 10 } } }
+          }
+        }
+      })
+    }
+
+    // 4. 시간대별 차트 (신규 추가: 0시 ~ 23시 Bar Chart)
+    function renderHourlyChart(data) {
+      destroyChart('hourly')
+      const ctx = document.getElementById('hourlyChart').getContext('2d')
+
+      let hourlyList = data || []
+      if (hourlyList.length === 0) {
+        hourlyList = Array.from({ length: 24 }, (_, i) => ({
+          hour: i,
+          hour_label: `${String(i).padStart(2, '0')}시`,
+          chapters: 0
+        }))
+      }
+
+      const maxVal = Math.max(...hourlyList.map(h => h.chapters), 1)
+      const colors = hourlyList.map(h => h.chapters === maxVal && maxVal > 0 ? '#8b5cf6' : '#a78bfa')
+
+      activeCharts.hourly = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: hourlyList.map(h => h.hour_label || `${h.hour}시`),
+          datasets: [{
+            label: '시간대별 완독 장수',
+            data: hourlyList.map(h => h.chapters),
+            backgroundColor: colors,
+            borderRadius: 4,
+            hoverBackgroundColor: '#7c3aed'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            barValueLabels: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (c) => `완료: ${Number(c.raw).toLocaleString()} 장`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { maxTicksLimit: 12, font: { size: 9 } }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: '#f8fafc' },
+              ticks: { font: { size: 10 } }
+            }
+          }
+        }
+      })
+    }
+
+    // 5. 조별 차트 2종 (총 장수 vs 1인당 장수 가로 막대 차트 + 수치 표시)
+    function renderGroupCharts(groups) {
+      destroyChart('groupTotal')
+      destroyChart('groupAvg')
+
+      const totalSorted = [...groups].sort((a, b) => b.total_chapters - a.total_chapters)
+      const avgSorted = [...groups].sort((a, b) => b.avg_per_user - a.avg_per_user)
+
+      // 조별 총 장수
+      const ctxTotal = document.getElementById('groupTotalChart').getContext('2d')
+      activeCharts.groupTotal = new Chart(ctxTotal, {
+        type: 'bar',
+        data: {
+          labels: totalSorted.map(g => g.group_nm),
+          datasets: [{
+            label: '총 읽은 장수',
+            data: totalSorted.map(g => g.total_chapters),
+            backgroundColor: '#1e3a8a',
+            borderRadius: 6,
+            hoverBackgroundColor: '#2563eb'
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { right: 55 } },
+          plugins: {
+            legend: { display: false },
+            barValueLabels: { display: true, color: '#1e3a8a', font: 'bold 10px Pretendard' },
+            tooltip: {
+              callbacks: {
+                label: (c) => `총 ${Number(c.raw).toLocaleString()} 장 (인원 ${totalSorted[c.dataIndex].user_count}명)`
+              }
+            }
+          },
+          scales: {
+            x: { beginAtZero: true, grid: { color: '#f8fafc' }, ticks: { font: { size: 10 } } },
+            y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+          }
+        }
+      })
+
+      // 조별 1인당 평균 장수
+      const ctxAvg = document.getElementById('groupAvgChart').getContext('2d')
+      activeCharts.groupAvg = new Chart(ctxAvg, {
+        type: 'bar',
+        data: {
+          labels: avgSorted.map(g => g.group_nm),
+          datasets: [{
+            label: '1인당 평균 장수',
+            data: avgSorted.map(g => g.avg_per_user),
+            backgroundColor: '#6366f1',
+            borderRadius: 6,
+            hoverBackgroundColor: '#4f46e5'
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { right: 45 } },
+          plugins: {
+            legend: { display: false },
+            barValueLabels: { display: true, color: '#4338ca', font: 'bold 10px Pretendard' },
+            tooltip: {
+              callbacks: {
+                label: (c) => `1인당 평균: ${Number(c.raw).toLocaleString()} 장`
+              }
+            }
+          },
+          scales: {
+            x: { beginAtZero: true, grid: { color: '#f8fafc' }, ticks: { font: { size: 10 } } },
+            y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+          }
+        }
+      })
+    }
+
+    // =========================================================================
+    // 6. 조별 완독률 현황 표 렌더링 (신규: 행은 조, 열은 전체 / 구약 / 신약)
+    // =========================================================================
+    function renderGroupFinishersTable(groups, overview) {
+      const tbody = document.getElementById('groupFinishersTableBody')
+      const tfoot = document.getElementById('groupFinishersTableFoot')
+
+      if (!groups || groups.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-slate-600">등록된 조별 통계 데이터가 없습니다.</td></tr>'
+        tfoot.innerHTML = ''
+        return
+      }
+
+      // 정렬: 전체 완독률 내림차순 (동률 시 구약 -> 신약 -> 총 장수)
+      const sorted = [...groups].sort((a, b) => 
+        (Number(b.all_rate || 0) - Number(a.all_rate || 0)) ||
+        (Number(b.ot_rate || 0) - Number(a.ot_rate || 0)) ||
+        (Number(b.total_chapters || 0) - Number(a.total_chapters || 0))
+      )
+
+      let sumUsers = 0
+      let sumAll = 0
+      let sumOt = 0
+      let sumNt = 0
+
+      tbody.innerHTML = sorted.map((g, idx) => {
+        const userCnt = Number(g.user_count || 0)
+        const allCnt = Number(g.all_finishers_cnt || 0)
+        const otCnt = Number(g.ot_finishers_cnt || 0)
+        const ntCnt = Number(g.nt_finishers_cnt || 0)
+        const allRate = Number(g.all_rate || 0).toFixed(1)
+        const otRate = Number(g.ot_rate || 0).toFixed(1)
+        const ntRate = Number(g.nt_rate || 0).toFixed(1)
+
+        sumUsers += userCnt
+        sumAll += allCnt
+        sumOt += otCnt
+        sumNt += ntCnt
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition">
+            <td class="py-3 px-4 text-center font-bold text-slate-600">${idx + 1}</td>
+            <td class="py-3 px-4 font-bold text-slate-900">${g.group_nm}</td>
+            <td class="py-3 px-4 text-center font-semibold text-slate-700">${userCnt.toLocaleString()}명</td>
+            
+            <!-- 전체 완독 (1,189장) -->
+            <td class="py-3 px-4 text-center bg-blue-50/30 border-x border-slate-200/50">
+              <div class="flex items-center justify-center gap-1.5">
+                <span class="font-extrabold text-blue-900">${allCnt}명</span>
+                <span class="text-[11px] font-bold text-blue-700 bg-blue-100/70 px-1.5 py-0.5 rounded">(${allRate}%)</span>
+              </div>
+              <div class="w-24 mx-auto bg-blue-100 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                <div class="bg-blue-600 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, g.all_rate || 0)}%"></div>
+              </div>
+            </td>
+
+            <!-- 구약 완독 (929장) -->
+            <td class="py-3 px-4 text-center bg-amber-50/30 border-r border-slate-200/50">
+              <div class="flex items-center justify-center gap-1.5">
+                <span class="font-extrabold text-amber-950">${otCnt}명</span>
+                <span class="text-[11px] font-bold text-amber-800 bg-amber-100/70 px-1.5 py-0.5 rounded">(${otRate}%)</span>
+              </div>
+              <div class="w-24 mx-auto bg-amber-100 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                <div class="bg-amber-600 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, g.ot_rate || 0)}%"></div>
+              </div>
+            </td>
+
+            <!-- 신약 완독 (260장) -->
+            <td class="py-3 px-4 text-center bg-emerald-50/30">
+              <div class="flex items-center justify-center gap-1.5">
+                <span class="font-extrabold text-emerald-950">${ntCnt}명</span>
+                <span class="text-[11px] font-bold text-emerald-800 bg-emerald-100/70 px-1.5 py-0.5 rounded">(${ntRate}%)</span>
+              </div>
+              <div class="w-24 mx-auto bg-emerald-100 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                <div class="bg-emerald-600 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, g.nt_rate || 0)}%"></div>
+              </div>
+            </td>
+          </tr>
+        `
+      }).join('')
+
+      // 합계 요약 행 (tfoot)
+      const totalAllRate = sumUsers > 0 ? (sumAll / sumUsers * 100).toFixed(1) : '0.0'
+      const totalOtRate = sumUsers > 0 ? (sumOt / sumUsers * 100).toFixed(1) : '0.0'
+      const totalNtRate = sumUsers > 0 ? (sumNt / sumUsers * 100).toFixed(1) : '0.0'
+
+      tfoot.innerHTML = `
+        <tr class="bg-slate-100/90 text-slate-900 border-t-2 border-slate-300">
+          <td class="py-3.5 px-4 text-center font-bold text-slate-600">합계</td>
+          <td class="py-3.5 px-4 font-extrabold">전체 (${sorted.length}개 조)</td>
+          <td class="py-3.5 px-4 text-center font-extrabold text-slate-800">${sumUsers.toLocaleString()}명</td>
+          <td class="py-3.5 px-4 text-center text-blue-950 bg-blue-100/50 border-x border-slate-300 font-bold">
+            <span class="font-extrabold text-sm text-blue-900">${sumAll}명</span>
+            <span class="text-xs font-extrabold text-blue-700 ml-1">(${totalAllRate}%)</span>
+          </td>
+          <td class="py-3.5 px-4 text-center text-amber-950 bg-amber-100/50 border-r border-slate-300 font-bold">
+            <span class="font-extrabold text-sm text-amber-950">${sumOt}명</span>
+            <span class="text-xs font-extrabold text-amber-800 ml-1">(${totalOtRate}%)</span>
+          </td>
+          <td class="py-3.5 px-4 text-center text-emerald-950 bg-emerald-100/50 font-bold">
+            <span class="font-extrabold text-sm text-emerald-950">${sumNt}명</span>
+            <span class="text-xs font-extrabold text-emerald-800 ml-1">(${totalNtRate}%)</span>
+          </td>
+        </tr>
+      `
+    }
+
+    // =========================================================================
+    // 완독자 명단 탭 전환 및 렌더링
+    // =========================================================================
+    function switchFinisherTab(tab) {
+      currentFinisherTab = tab
+
+      // 탭 스타일 갱신
+      const tabAll = document.getElementById('tabAll')
+      const tabOt = document.getElementById('tabOt')
+      const tabNt = document.getElementById('tabNt')
+
+      const activeClass = 'finisher-tab flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition text-white shadow-sm '
+      const inactiveClass = 'finisher-tab flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition text-slate-600 hover:bg-slate-200/60 '
+
+      tabAll.className = (tab === 'all') ? activeClass + 'bg-blue-900' : inactiveClass
+      tabOt.className = (tab === 'ot') ? activeClass + 'bg-amber-900' : inactiveClass
+      tabNt.className = (tab === 'nt') ? activeClass + 'bg-emerald-900' : inactiveClass
+
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 30, spread: 60, origin: { y: 0.85 } })
+      }
+
+      renderFinishersTable()
+    }
+
+    function renderFinishersTable() {
+      if (!dashboardData) return
+      const tbody = document.getElementById('finishersTableBody')
+      const filterText = document.getElementById('finisherSearchInput').value.trim().toLowerCase()
+
+      const list = dashboardData.finishers?.[currentFinisherTab] || []
+      const filtered = list.filter(item => {
+        if (!filterText) return true
+        return (item.nickname && item.nickname.toLowerCase().includes(filterText)) ||
+               (item.group_nm && item.group_nm.toLowerCase().includes(filterText))
+      })
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-10 text-center text-slate-600">
+              ${filterText ? `'${filterText}' 검색 결과가 없습니다.` : '해당 부문의 완독자가 아직 없습니다.'}
+            </td>
+          </tr>
+        `
+        return
+      }
+
+      tbody.innerHTML = filtered.map((item, index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`
+        return `
+          <tr class="hover:bg-blue-50/40 transition">
+            <td class="py-3 px-4 text-center font-bold ${index < 3 ? 'text-base' : 'text-slate-600'}">${medal}</td>
+            <td class="py-3 px-4 font-bold text-slate-900 flex items-center gap-1.5">
+              <span>${item.nickname}</span>
+              ${index < 3 ? '<span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">TOP ' + (index+1) + '</span>' : ''}
+            </td>
+            <td class="py-3 px-4 text-slate-600">${item.group_nm || '개인'}</td>
+            <td class="py-3 px-4 text-right font-extrabold text-blue-900">${Number(item.chapters).toLocaleString()} 장</td>
+            <td class="py-3 px-4 text-right text-slate-600 font-mono">${item.finished_at || '-'}</td>
+          </tr>
+        `
+      }).join('')
+    }
+
+    // =========================================================================
+    // Supabase RPC 미등록 시 표시할 현실적인 시안용 Mock 데이터 생성기
+    // =========================================================================
+    function generateMockStatsData(ministryCd, baseDate) {
+      const dates = []
+      const dailyTrend = []
+      const today = new Date(baseDate || '2026-11-02')
+
+      // 60일간의 날짜 생성
+      for (let i = 59; i >= 0; i--) {
+        const d = new Date(today)
+        d.setDate(today.getDate() - i)
+        const dStr = d.toISOString().split('T')[0]
+        dates.push(dStr)
+
+        const day = d.getDay()
+        const baseChapters = day === 0 ? 340 : day === 6 ? 270 : 190
+        const randomVar = Math.floor(Math.sin(i * 0.4) * 45 + Math.random() * 55)
+        dailyTrend.push({ date: dStr, chapters: Math.max(60, baseChapters + randomVar) })
+      }
+
+      const topDays = [...dailyTrend].sort((a, b) => b.chapters - a.chapters).slice(0, 5).map((d, i) => {
+        const dateObj = new Date(d.date)
+        const days = ['일', '월', '화', '수', '목', '금', '토']
+        return { rank: i + 1, date: d.date, dow: days[dateObj.getDay()], chapters: d.chapters }
+      })
+
+      const bottomDays = [...dailyTrend].sort((a, b) => a.chapters - b.chapters).slice(0, 5).map((d, i) => {
+        const dateObj = new Date(d.date)
+        const days = ['일', '월', '화', '수', '목', '금', '토']
+        return { rank: i + 1, date: d.date, dow: days[dateObj.getDay()], chapters: d.chapters }
+      })
+
+      // 시간대별 mock 데이터
+      const hourlyData = [
+        { hour: 0, hour_label: '00시', chapters: 1120 },
+        { hour: 1, hour_label: '01시', chapters: 520 },
+        { hour: 2, hour_label: '02시', chapters: 210 },
+        { hour: 3, hour_label: '03시', chapters: 140 },
+        { hour: 4, hour_label: '04시', chapters: 420 },
+        { hour: 5, hour_label: '05시', chapters: 1850 },
+        { hour: 6, hour_label: '06시', chapters: 4890 },
+        { hour: 7, hour_label: '07시', chapters: 3950 },
+        { hour: 8, hour_label: '08시', chapters: 2780 },
+        { hour: 9, hour_label: '09시', chapters: 2420 },
+        { hour: 10, hour_label: '10시', chapters: 2310 },
+        { hour: 11, hour_label: '11시', chapters: 2150 },
+        { hour: 12, hour_label: '12시', chapters: 3450 },
+        { hour: 13, hour_label: '13시', chapters: 2890 },
+        { hour: 14, hour_label: '14시', chapters: 2210 },
+        { hour: 15, hour_label: '15시', chapters: 2050 },
+        { hour: 16, hour_label: '16시', chapters: 2180 },
+        { hour: 17, hour_label: '17시', chapters: 2420 },
+        { hour: 18, hour_label: '18시', chapters: 2650 },
+        { hour: 19, hour_label: '19시', chapters: 3200 },
+        { hour: 20, hour_label: '20시', chapters: 4120 },
+        { hour: 21, hour_label: '21시', chapters: 5640 },
+        { hour: 22, hour_label: '22시', chapters: 6826 },
+        { hour: 23, hour_label: '23시', chapters: 3100 }
+      ]
+
+      // 조별 완독 회원수 및 완독률 포함 mock 데이터
+      const mockGroups = [
+        { group_code: 'G1', group_nm: '제2청장년회', user_count: 14, total_chapters: 14820, avg_per_user: 1058.6, all_finishers_cnt: 4, all_rate: 28.6, ot_finishers_cnt: 6, ot_rate: 42.9, nt_finishers_cnt: 8, nt_rate: 57.1 },
+        { group_code: 'G2', group_nm: '11.여디디야', user_count: 12, total_chapters: 12450, avg_per_user: 1037.5, all_finishers_cnt: 3, all_rate: 25.0, ot_finishers_cnt: 5, ot_rate: 41.7, nt_finishers_cnt: 7, nt_rate: 58.3 },
+        { group_code: 'G3', group_nm: '성경통독 보대원2', user_count: 10, total_chapters: 8900, avg_per_user: 890.0, all_finishers_cnt: 2, all_rate: 20.0, ot_finishers_cnt: 3, ot_rate: 30.0, nt_finishers_cnt: 5, nt_rate: 50.0 },
+        { group_code: 'G4', group_nm: '성경통독 보대원3', user_count: 8, total_chapters: 7120, avg_per_user: 890.0, all_finishers_cnt: 1, all_rate: 12.5, ot_finishers_cnt: 2, ot_rate: 25.0, nt_finishers_cnt: 4, nt_rate: 50.0 },
+        { group_code: 'G5', group_nm: '도르가섬김', user_count: 7, total_chapters: 5880, avg_per_user: 840.0, all_finishers_cnt: 1, all_rate: 14.3, ot_finishers_cnt: 2, ot_rate: 28.6, nt_finishers_cnt: 3, nt_rate: 42.9 },
+        { group_code: 'G6', group_nm: '개인', user_count: 18, total_chapters: 11520, avg_per_user: 640.0, all_finishers_cnt: 3, all_rate: 16.7, ot_finishers_cnt: 4, ot_rate: 22.2, nt_finishers_cnt: 6, nt_rate: 33.3 }
+      ]
+
+      return {
+        ministry: { code_cd: ministryCd, code_nm: '2026 연세대학교회 성경통독', description: '연세대학교회 기본' },
+        as_of_date: baseDate,
+        overview: {
+          start_date: '2026-04-02',
+          end_date: baseDate || '2026-11-02',
+          elapsed_days: 215,
+          total_users: 125,
+          active_users: 108,
+          total_read_chapters: 60696,
+          daily_avg_per_user: 2.26,
+          ot_finishers_cnt: 24,
+          ot_rate: 19.2,
+          nt_finishers_cnt: 38,
+          nt_rate: 30.4,
+          all_finishers_cnt: 19,
+          all_rate: 15.2
+        },
+        daily_trend: dailyTrend,
+        top_days: topDays,
+        bottom_days: bottomDays,
+        monthly: [
+          { month: '2026-04', chapters: 7950 },
+          { month: '2026-05', chapters: 6850 },
+          { month: '2026-06', chapters: 7100 },
+          { month: '2026-07', chapters: 6900 },
+          { month: '2026-08', chapters: 6400 },
+          { month: '2026-09', chapters: 7300 },
+          { month: '2026-10', chapters: 18196 }
+        ],
+        day_of_week: [
+          { num: 0, day: '일', chapters: 12850 },
+          { num: 1, day: '월', chapters: 8120 },
+          { num: 2, day: '화', chapters: 7950 },
+          { num: 3, day: '수', chapters: 8300 },
+          { num: 4, day: '목', chapters: 7650 },
+          { num: 5, day: '금', chapters: 7426 },
+          { num: 6, day: '토', chapters: 8400 }
+        ],
+        hourly: hourlyData,
+        groups: mockGroups,
+        finishers: {
+          all: [
+            { nickname: '김윤정', group_nm: '개인', chapters: 1189, finished_at: '2026-09-14' },
+            { nickname: '신현윤', group_nm: '제2청장년회', chapters: 1189, finished_at: '2026-09-28' },
+            { nickname: '노회경', group_nm: '11.여디디야', chapters: 1189, finished_at: '2026-10-02' },
+            { nickname: '이예나', group_nm: '성경통독 보대원2', chapters: 1189, finished_at: '2026-10-15' },
+            { nickname: '오혜련', group_nm: '제2청장년회', chapters: 1189, finished_at: '2026-10-22' },
+            { nickname: '김유순', group_nm: '도르가섬김', chapters: 1189, finished_at: '2026-10-29' }
+          ],
+          ot: [
+            { nickname: '김윤정', group_nm: '개인', chapters: 929, finished_at: '2026-08-20' },
+            { nickname: '신현윤', group_nm: '제2청장년회', chapters: 929, finished_at: '2026-08-25' },
+            { nickname: '노회경', group_nm: '11.여디디야', chapters: 929, finished_at: '2026-09-01' },
+            { nickname: '김영임', group_nm: '성경통독 보대원3', chapters: 929, finished_at: '2026-09-10' },
+            { nickname: '이예나', group_nm: '성경통독 보대원2', chapters: 929, finished_at: '2026-09-18' }
+          ],
+          nt: [
+            { nickname: '김윤정', group_nm: '개인', chapters: 260, finished_at: '2026-06-12' },
+            { nickname: '신현윤', group_nm: '제2청장년회', chapters: 260, finished_at: '2026-06-18' },
+            { nickname: '노회경', group_nm: '11.여디디야', chapters: 260, finished_at: '2026-06-25' },
+            { nickname: '오혜련', group_nm: '제2청장년회', chapters: 260, finished_at: '2026-07-04' },
+            { nickname: '김유순', group_nm: '도르가섬김', chapters: 260, finished_at: '2026-07-15' },
+            { nickname: '이예나', group_nm: '성경통독 보대원2', chapters: 260, finished_at: '2026-07-22' }
+          ]
+        }
+      }
+    }
+  </script>
+</body>
+</html>
