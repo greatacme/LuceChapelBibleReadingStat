@@ -357,57 +357,31 @@
         </h2>
       </div>
 
-      <!-- 조별 완독률 현황 표 (행: 조 / 열: 전체, 구약, 신약) -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-3 sm:p-5 space-y-3">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-slate-100 pb-2.5">
+      <!-- 조별 완독률 현황 (섹션 카드형) -->
+      <div class="space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 px-1">
           <div>
             <h3 class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-1.5">
               <span>📋 조별 완독률 현황</span>
-              <span class="text-[10px] sm:text-xs bg-blue-50 text-blue-800 font-semibold px-1.5 py-0.5 rounded">완독 100% 기준</span>
+              <span class="text-[10px] sm:text-xs bg-blue-50 text-blue-800 font-semibold px-2 py-0.5 rounded">완독 100% 기준</span>
             </h3>
-            <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5">조원 수 대비 전체(1,189장) • 구약(929장) • 신약(260장) 100% 완독 회원수 및 완독률</p>
+            <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5">각 조별 인원 대비 전체(1,189장) • 구약(929장) • 신약(260장) 100% 완독 회원수 및 완독률</p>
           </div>
           <div class="text-[10px] sm:text-[11px] text-slate-400 font-medium">
             * 완독률 = (완독 회원수 ÷ 조원 수) × 100
           </div>
         </div>
 
-        <div class="overflow-x-auto custom-scrollbar">
-          <table class="w-full text-left border-collapse table-auto">
-            <thead>
-              <tr class="bg-slate-50/90 text-slate-700 text-[11px] sm:text-xs font-bold border-y border-slate-200">
-                <th class="py-2.5 px-1 sm:px-2 w-8 sm:w-10 text-center">순번</th>
-                <th class="py-2.5 px-2 sm:px-3 whitespace-nowrap">조 (공동체)</th>
-                <th class="py-2.5 px-1.5 sm:px-2 text-center whitespace-nowrap">조원</th>
-                <th class="py-2 px-1.5 sm:px-2 text-center min-w-[85px] sm:min-w-[105px] bg-blue-50/60 text-blue-950 border-x border-slate-200/70">
-                  <div class="flex flex-col items-center justify-center leading-tight">
-                    <span>🏆 전체<span class="hidden sm:inline"> 완독</span></span>
-                    <span class="text-[9px] sm:text-[10px] text-blue-700 font-normal">(1,189장)</span>
-                  </div>
-                </th>
-                <th class="py-2 px-1.5 sm:px-2 text-center min-w-[85px] sm:min-w-[105px] bg-amber-50/60 text-amber-950 border-r border-slate-200/70">
-                  <div class="flex flex-col items-center justify-center leading-tight">
-                    <span>📜 구약<span class="hidden sm:inline"> 완독</span></span>
-                    <span class="text-[9px] sm:text-[10px] text-amber-800 font-normal">(929장)</span>
-                  </div>
-                </th>
-                <th class="py-2 px-1.5 sm:px-2 text-center min-w-[85px] sm:min-w-[105px] bg-emerald-50/60 text-emerald-950">
-                  <div class="flex flex-col items-center justify-center leading-tight">
-                    <span>✝️ 신약<span class="hidden sm:inline"> 완독</span></span>
-                    <span class="text-[9px] sm:text-[10px] text-emerald-800 font-normal">(260장)</span>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody id="groupFinishersTableBody" class="divide-y divide-slate-100 text-xs">
-              <tr>
-                <td colspan="6" class="py-6 text-center text-slate-600">조별 완독 데이터를 불러오는 중입니다...</td>
-              </tr>
-            </tbody>
-            <tfoot id="groupFinishersTableFoot" class="bg-slate-50 font-bold text-xs border-t-2 border-slate-300">
-              <!-- 합계 요약 행 자동 생성 -->
-            </tfoot>
-          </table>
+        <!-- 조별 카드 그리드 (모바일 1열, PC 2열) -->
+        <div id="groupCardsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          <div class="col-span-full py-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-200/80">
+            조별 완독 데이터를 불러오는 중입니다...
+          </div>
+        </div>
+
+        <!-- 전체 조 합계 요약 바 -->
+        <div id="groupFinishersSummary" class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <!-- JS에서 동적 렌더링 -->
         </div>
       </div>
 
@@ -719,8 +693,8 @@
       renderHourlyChart(hourly || [])
       renderGroupCharts(groups || [])
 
-      // 4. 조별 완독률 현황 표 렌더링 (신규 추가)
-      renderGroupFinishersTable(groups || [], overview || {})
+      // 4. 조별 완독률 현황 카드 렌더링 (섹션 카드형)
+      renderGroupCards(groups || [], overview || {})
 
       // 5. 완독자 탭 카운트 및 목록 렌더링
       const allList = finishers?.all || []
@@ -1071,15 +1045,15 @@
     }
 
     // =========================================================================
-    // 6. 조별 완독률 현황 표 렌더링 (신규: 행은 조, 열은 전체 / 구약 / 신약)
+    // 6. 조별 완독률 현황 섹션 카드 렌더링 (모바일 1열, PC 2열 반응형)
     // =========================================================================
-    function renderGroupFinishersTable(groups, overview) {
-      const tbody = document.getElementById('groupFinishersTableBody')
-      const tfoot = document.getElementById('groupFinishersTableFoot')
+    function renderGroupCards(groups, overview) {
+      const container = document.getElementById('groupCardsGrid')
+      const summaryEl = document.getElementById('groupFinishersSummary')
 
       if (!groups || groups.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-slate-600">등록된 조별 통계 데이터가 없습니다.</td></tr>'
-        tfoot.innerHTML = ''
+        container.innerHTML = '<div class="col-span-full py-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-200/80">등록된 조별 데이터가 없습니다.</div>'
+        if (summaryEl) summaryEl.innerHTML = ''
         return
       }
 
@@ -1095,7 +1069,7 @@
       let sumOt = 0
       let sumNt = 0
 
-      tbody.innerHTML = sorted.map((g, idx) => {
+      container.innerHTML = sorted.map((g, idx) => {
         const userCnt = Number(g.user_count || 0)
         const allCnt = Number(g.all_finishers_cnt || 0)
         const otCnt = Number(g.ot_finishers_cnt || 0)
@@ -1109,72 +1083,110 @@
         sumOt += otCnt
         sumNt += ntCnt
 
+        const rankBadge = idx === 0 ? '🥇 1위' : idx === 1 ? '🥈 2위' : idx === 2 ? '🥉 3위' : `${idx + 1}위`
+        const rankColor = idx === 0 ? 'bg-amber-100 text-amber-900 border-amber-300' :
+                          idx === 1 ? 'bg-slate-100 text-slate-800 border-slate-300' :
+                          idx === 2 ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-50 text-slate-600 border-slate-200'
+
         return `
-          <tr class="hover:bg-slate-50/80 transition">
-            <td class="py-2.5 px-1 sm:px-2 text-center font-bold text-slate-400 text-[11px] sm:text-xs">${idx + 1}</td>
-            <td class="py-2.5 px-2 sm:px-3 font-bold text-slate-900 whitespace-nowrap text-xs">${g.group_nm}</td>
-            <td class="py-2.5 px-1.5 sm:px-2 text-center font-semibold text-slate-700 whitespace-nowrap text-[11px] sm:text-xs">${userCnt.toLocaleString()}명</td>
-            
-            <!-- 전체 완독 (1,189장) -->
-            <td class="py-2 px-1.5 sm:px-2 text-center bg-blue-50/30 border-x border-slate-200/50">
-              <div class="flex items-center justify-center gap-1 leading-none">
-                <span class="font-extrabold text-blue-900 text-xs">${allCnt}명</span>
-                <span class="text-[10px] font-bold text-blue-700 bg-blue-100/70 px-1 py-0.5 rounded leading-none">${allRate}%</span>
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 hover:border-blue-300 hover:shadow-md transition flex flex-col justify-between">
+            <!-- 상단 헤더: 순위 + 조 이름 + 조원 수 -->
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-xs font-bold px-2 py-0.5 rounded-full border ${rankColor} whitespace-nowrap">
+                  ${rankBadge}
+                </span>
+                <span class="font-extrabold text-slate-900 text-sm sm:text-base truncate">${g.group_nm}</span>
               </div>
-              <div class="w-14 sm:w-20 mx-auto bg-blue-100 h-1 rounded-full mt-1.5 overflow-hidden">
-                <div class="bg-blue-600 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, g.all_rate || 0)}%"></div>
-              </div>
-            </td>
+              <span class="inline-flex items-center gap-1 text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full whitespace-nowrap ml-2">
+                <span>👥</span>
+                <span>조원 ${userCnt.toLocaleString()}명</span>
+              </span>
+            </div>
 
-            <!-- 구약 완독 (929장) -->
-            <td class="py-2 px-1.5 sm:px-2 text-center bg-amber-50/30 border-r border-slate-200/50">
-              <div class="flex items-center justify-center gap-1 leading-none">
-                <span class="font-extrabold text-amber-950 text-xs">${otCnt}명</span>
-                <span class="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-1 py-0.5 rounded leading-none">${otRate}%</span>
+            <!-- 하단 3분할 완독 섹션 미니 카드 -->
+            <div class="grid grid-cols-3 gap-2 sm:gap-2.5 mt-3">
+              
+              <!-- 1. 전체 완독 (1,189장) -->
+              <div class="bg-blue-50/70 border border-blue-200/70 rounded-xl p-2.5 sm:p-3 text-center flex flex-col justify-between">
+                <div class="text-[11px] font-bold text-blue-900 flex items-center justify-center gap-0.5">
+                  <span>🏆 전체</span>
+                  <span class="text-[9px] text-blue-600 font-normal hidden sm:inline">(1,189)</span>
+                </div>
+                <div class="my-1 sm:my-1.5">
+                  <div class="text-sm sm:text-base font-extrabold text-blue-950">${allCnt}명</div>
+                  <div class="text-[10px] sm:text-[11px] font-bold text-blue-700 bg-blue-100/90 px-1.5 py-0.5 rounded inline-block mt-0.5">${allRate}%</div>
+                </div>
+                <div class="w-full bg-blue-200/60 h-1.5 rounded-full overflow-hidden mt-1">
+                  <div class="bg-blue-600 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, g.all_rate || 0)}%"></div>
+                </div>
               </div>
-              <div class="w-14 sm:w-20 mx-auto bg-amber-100 h-1 rounded-full mt-1.5 overflow-hidden">
-                <div class="bg-amber-600 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, g.ot_rate || 0)}%"></div>
-              </div>
-            </td>
 
-            <!-- 신약 완독 (260장) -->
-            <td class="py-2 px-1.5 sm:px-2 text-center bg-emerald-50/30">
-              <div class="flex items-center justify-center gap-1 leading-none">
-                <span class="font-extrabold text-emerald-950 text-xs">${ntCnt}명</span>
-                <span class="text-[10px] font-bold text-emerald-800 bg-emerald-100/70 px-1 py-0.5 rounded leading-none">${ntRate}%</span>
+              <!-- 2. 구약 완독 (929장) -->
+              <div class="bg-amber-50/70 border border-amber-200/70 rounded-xl p-2.5 sm:p-3 text-center flex flex-col justify-between">
+                <div class="text-[11px] font-bold text-amber-950 flex items-center justify-center gap-0.5">
+                  <span>📜 구약</span>
+                  <span class="text-[9px] text-amber-700 font-normal hidden sm:inline">(929)</span>
+                </div>
+                <div class="my-1 sm:my-1.5">
+                  <div class="text-sm sm:text-base font-extrabold text-amber-950">${otCnt}명</div>
+                  <div class="text-[10px] sm:text-[11px] font-bold text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded inline-block mt-0.5">${otRate}%</div>
+                </div>
+                <div class="w-full bg-amber-200/60 h-1.5 rounded-full overflow-hidden mt-1">
+                  <div class="bg-amber-600 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, g.ot_rate || 0)}%"></div>
+                </div>
               </div>
-              <div class="w-14 sm:w-20 mx-auto bg-emerald-100 h-1 rounded-full mt-1.5 overflow-hidden">
-                <div class="bg-emerald-600 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, g.nt_rate || 0)}%"></div>
+
+              <!-- 3. 신약 완독 (260장) -->
+              <div class="bg-emerald-50/70 border border-emerald-200/70 rounded-xl p-2.5 sm:p-3 text-center flex flex-col justify-between">
+                <div class="text-[11px] font-bold text-emerald-950 flex items-center justify-center gap-0.5">
+                  <span>✝️ 신약</span>
+                  <span class="text-[9px] text-emerald-700 font-normal hidden sm:inline">(260)</span>
+                </div>
+                <div class="my-1 sm:my-1.5">
+                  <div class="text-sm sm:text-base font-extrabold text-emerald-950">${ntCnt}명</div>
+                  <div class="text-[10px] sm:text-[11px] font-bold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded inline-block mt-0.5">${ntRate}%</div>
+                </div>
+                <div class="w-full bg-emerald-200/60 h-1.5 rounded-full overflow-hidden mt-1">
+                  <div class="bg-emerald-600 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, g.nt_rate || 0)}%"></div>
+                </div>
               </div>
-            </td>
-          </tr>
+
+            </div>
+          </div>
         `
       }).join('')
 
-      // 합계 요약 행 (tfoot)
-      const totalAllRate = sumUsers > 0 ? (sumAll / sumUsers * 100).toFixed(1) : '0.0'
-      const totalOtRate = sumUsers > 0 ? (sumOt / sumUsers * 100).toFixed(1) : '0.0'
-      const totalNtRate = sumUsers > 0 ? (sumNt / sumUsers * 100).toFixed(1) : '0.0'
+      // 합계 요약 바 (전체 조 통계)
+      if (summaryEl) {
+        const totalAllRate = sumUsers > 0 ? (sumAll / sumUsers * 100).toFixed(1) : '0.0'
+        const totalOtRate = sumUsers > 0 ? (sumOt / sumUsers * 100).toFixed(1) : '0.0'
+        const totalNtRate = sumUsers > 0 ? (sumNt / sumUsers * 100).toFixed(1) : '0.0'
 
-      tfoot.innerHTML = `
-        <tr class="bg-slate-100/90 text-slate-900 border-t-2 border-slate-300">
-          <td class="py-2.5 px-1 sm:px-2 text-center font-bold text-slate-500 text-[11px]">합계</td>
-          <td class="py-2.5 px-2 sm:px-3 font-extrabold text-xs whitespace-nowrap">전체 (${sorted.length}개 조)</td>
-          <td class="py-2.5 px-1.5 sm:px-2 text-center font-extrabold text-slate-800 text-[11px] whitespace-nowrap">${sumUsers.toLocaleString()}명</td>
-          <td class="py-2.5 px-1.5 sm:px-2 text-center text-blue-950 bg-blue-100/50 border-x border-slate-300">
-            <span class="font-extrabold text-xs text-blue-900">${sumAll}명</span>
-            <span class="text-[10px] font-extrabold text-blue-700 ml-0.5">(${totalAllRate}%)</span>
-          </td>
-          <td class="py-2.5 px-1.5 sm:px-2 text-center text-amber-950 bg-amber-100/50 border-r border-slate-300">
-            <span class="font-extrabold text-xs text-amber-950">${sumOt}명</span>
-            <span class="text-[10px] font-extrabold text-amber-800 ml-0.5">(${totalOtRate}%)</span>
-          </td>
-          <td class="py-2.5 px-1.5 sm:px-2 text-center text-emerald-950 bg-emerald-100/50">
-            <span class="font-extrabold text-xs text-emerald-950">${sumNt}명</span>
-            <span class="text-[10px] font-extrabold text-emerald-800 ml-0.5">(${totalNtRate}%)</span>
-          </td>
-        </tr>
-      `
+        summaryEl.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="font-extrabold text-slate-800 text-sm">📊 전체 합계 요약</span>
+            <span class="text-slate-500 text-xs">총 ${sorted.length}개 조 / ${sumUsers.toLocaleString()}명</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5 sm:gap-4 text-xs">
+            <div class="flex items-center gap-1.5 bg-blue-50 border border-blue-200/70 px-2.5 py-1 rounded-lg">
+              <span class="text-blue-900 font-semibold">전체완독:</span>
+              <span class="font-extrabold text-blue-950">${sumAll}명</span>
+              <span class="text-blue-700 font-bold">(${totalAllRate}%)</span>
+            </div>
+            <div class="flex items-center gap-1.5 bg-amber-50 border border-amber-200/70 px-2.5 py-1 rounded-lg">
+              <span class="text-amber-950 font-semibold">구약완독:</span>
+              <span class="font-extrabold text-amber-950">${sumOt}명</span>
+              <span class="text-amber-800 font-bold">(${totalOtRate}%)</span>
+            </div>
+            <div class="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200/70 px-2.5 py-1 rounded-lg">
+              <span class="text-emerald-950 font-semibold">신약완독:</span>
+              <span class="font-extrabold text-emerald-950">${sumNt}명</span>
+              <span class="text-emerald-800 font-bold">(${totalNtRate}%)</span>
+            </div>
+          </div>
+        `
+      }
     }
 
     // =========================================================================
