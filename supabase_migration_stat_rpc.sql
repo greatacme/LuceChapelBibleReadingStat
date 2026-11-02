@@ -1,5 +1,5 @@
 -- ============================================================
--- Luce Chapel Bible Reading 종합 통계 RPC 함수 (v1.3)
+-- Luce Chapel Bible Reading 종합 통계 RPC 함수 (ver 1.3.2026.1103)
 -- ============================================================
 -- 변경 사항:
 -- 1. [버그 수정] 완독 달성일(finished_at) 정확한 고정일자 산출:
@@ -75,6 +75,18 @@ BEGIN
     WHERE r.completed = true
       AND (r.updated_at AT TIME ZONE 'Asia/Seoul')::DATE <= p_base_date
   ),
+  -- 1인 KST 하루 50장 이상인 사용자/날짜의 기록만 패턴 통계에서 제외.
+  -- 개요/월별/조별/개인 진도율은 원본 tgt_records를 그대로 사용.
+  user_daily_counts AS (
+    SELECT user_id, read_date, COUNT(*) AS chapters
+    FROM tgt_records
+    GROUP BY user_id, read_date
+  ),
+  pattern_records AS (
+    SELECT r.* FROM tgt_records r
+    JOIN user_daily_counts d ON d.user_id = r.user_id AND d.read_date = r.read_date
+    WHERE d.chapters < 50
+  ),
   -- 6. 사용자별 구약/신약/전체 장별 완료 순번 부여 (정확한 완독 달성일 계산용)
   ranked_records AS (
     SELECT r.user_id,
@@ -126,9 +138,9 @@ BEGIN
            COUNT(r.id) FILTER (WHERE tp.testament = 'OT') AS ot_count,
            COUNT(r.id) FILTER (WHERE tp.testament = 'NT') AS nt_count,
            COUNT(r.id) AS total_count,
-           ufd.ot_finished_at,
-           ufd.nt_finished_at,
-           ufd.all_finished_at
+           CASE WHEN COUNT(r.id) FILTER (WHERE tp.testament = 'OT') >= 929 THEN ufd.ot_finished_at END AS ot_finished_at,
+           CASE WHEN COUNT(r.id) FILTER (WHERE tp.testament = 'NT') >= 260 THEN ufd.nt_finished_at END AS nt_finished_at,
+           CASE WHEN COUNT(r.id) >= 1189 THEN ufd.all_finished_at END AS all_finished_at
     FROM tgt_users u
     LEFT JOIN tgt_records r ON r.user_id = u.id
     LEFT JOIN tgt_plans tp ON r.plan_id = tp.id
@@ -166,48 +178,38 @@ BEGIN
       END AS all_rate
     FROM record_range rr
   ),
-  -- 11. 일자별 트렌드
+  -- 기간 전체를 달력으로 생성하여 무기록일도 0장으로 포함.
+  calendar_days AS (
+    SELECT day::DATE AS read_date
+    FROM record_range rr
+    CROSS JOIN LATERAL generate_series(rr.start_date::TIMESTAMP, rr.end_date::TIMESTAMP, INTERVAL '1 day') AS day
+  ),
+  daily_counts AS (
+    SELECT c.read_date, COUNT(r.id)::BIGINT AS chapters
+    FROM calendar_days c
+    LEFT JOIN pattern_records r ON r.read_date = c.read_date
+    GROUP BY c.read_date
+  ),
   daily_trend AS (
-    SELECT COALESCE(JSONB_AGG(sub), '[]'::JSONB) AS json_val
-    FROM (
-      SELECT read_date::TEXT AS date, COUNT(*)::BIGINT AS chapters
-      FROM tgt_records
-      GROUP BY read_date
-      ORDER BY read_date ASC
-    ) sub
+    SELECT COALESCE(JSONB_AGG(jsonb_build_object('date', read_date::TEXT, 'chapters', chapters) ORDER BY read_date), '[]'::JSONB) AS json_val
+    FROM daily_counts
   ),
-  -- 12. 최다 읽은 날 Top 5
   top_days AS (
-    SELECT COALESCE(JSONB_AGG(sub), '[]'::JSONB) AS json_val
+    SELECT COALESCE(JSONB_AGG(sub ORDER BY rank), '[]'::JSONB) AS json_val
     FROM (
-      SELECT ROW_NUMBER() OVER(ORDER BY COUNT(*) DESC, read_date DESC) AS rank,
-             read_date::TEXT AS date,
-             COUNT(*)::BIGINT AS chapters,
-             CASE EXTRACT(DOW FROM read_date)::INT
-               WHEN 0 THEN '일' WHEN 1 THEN '월' WHEN 2 THEN '화'
-               WHEN 3 THEN '수' WHEN 4 THEN '목' WHEN 5 THEN '금' ELSE '토'
-             END AS dow
-      FROM tgt_records
-      GROUP BY read_date
-      ORDER BY chapters DESC, read_date DESC
-      LIMIT 5
+      SELECT ROW_NUMBER() OVER (ORDER BY chapters DESC, read_date DESC) AS rank,
+             read_date::TEXT AS date, chapters,
+             (ARRAY['일','월','화','수','목','금','토'])[EXTRACT(DOW FROM read_date)::INT + 1] AS dow
+      FROM daily_counts ORDER BY chapters DESC, read_date DESC LIMIT 5
     ) sub
   ),
-  -- 13. 최소 읽은 날 Top 5
   bottom_days AS (
-    SELECT COALESCE(JSONB_AGG(sub), '[]'::JSONB) AS json_val
+    SELECT COALESCE(JSONB_AGG(sub ORDER BY rank), '[]'::JSONB) AS json_val
     FROM (
-      SELECT ROW_NUMBER() OVER(ORDER BY COUNT(*) ASC, read_date ASC) AS rank,
-             read_date::TEXT AS date,
-             COUNT(*)::BIGINT AS chapters,
-             CASE EXTRACT(DOW FROM read_date)::INT
-               WHEN 0 THEN '일' WHEN 1 THEN '월' WHEN 2 THEN '화'
-               WHEN 3 THEN '수' WHEN 4 THEN '목' WHEN 5 THEN '금' ELSE '토'
-             END AS dow
-      FROM tgt_records
-      GROUP BY read_date
-      ORDER BY chapters ASC, read_date ASC
-      LIMIT 5
+      SELECT ROW_NUMBER() OVER (ORDER BY chapters ASC, read_date ASC) AS rank,
+             read_date::TEXT AS date, chapters,
+             (ARRAY['일','월','화','수','목','금','토'])[EXTRACT(DOW FROM read_date)::INT + 1] AS dow
+      FROM daily_counts ORDER BY chapters ASC, read_date ASC LIMIT 5
     ) sub
   ),
   -- 14. 월별 차트
@@ -220,18 +222,17 @@ BEGIN
       ORDER BY read_month ASC
     ) sub
   ),
-  -- 15. 요일별 차트 (일~토)
+  -- 요일별 하루 평균: 제외 후 장수 / 기간 내 해당 요일 날짜 수 (0장 포함).
   dow_data AS (
-    SELECT COALESCE(JSONB_AGG(sub), '[]'::JSONB) AS json_val
+    SELECT COALESCE(JSONB_AGG(sub ORDER BY num), '[]'::JSONB) AS json_val
     FROM (
-      WITH days(num, name) AS (
-        VALUES (0, '일'), (1, '월'), (2, '화'), (3, '수'), (4, '목'), (5, '금'), (6, '토')
-      )
-      SELECT d.num, d.name AS day, COALESCE(COUNT(r.id), 0)::BIGINT AS chapters
-      FROM days d
-      LEFT JOIN tgt_records r ON r.dow_num = d.num
+      SELECT d.num, d.name AS day,
+             COALESCE(SUM(c.chapters), 0) AS chapters,
+             COUNT(c.read_date) AS day_count,
+             COALESCE(ROUND(AVG(c.chapters), 1), 0) AS avg_chapters
+      FROM (VALUES (0,'일'),(1,'월'),(2,'화'),(3,'수'),(4,'목'),(5,'금'),(6,'토')) AS d(num,name)
+      LEFT JOIN daily_counts c ON EXTRACT(DOW FROM c.read_date)::INT = d.num
       GROUP BY d.num, d.name
-      ORDER BY d.num ASC
     ) sub
   ),
   -- 16. 시간대별 차트 (0시~23시)
@@ -311,6 +312,8 @@ BEGIN
     ) sub
   )
   SELECT jsonb_build_object(
+    'stats_version', '1.3.2026.1103',
+    'personal_progress', (SELECT COALESCE(JSONB_AGG(TO_JSONB(up) ORDER BY up.total_count DESC, up.nickname, up.user_id), '[]'::JSONB) FROM user_progress up),
     'ministry', jsonb_build_object(
       'code_cd', p_ministry_cd,
       'code_nm', (SELECT ministry_nm FROM ministry_info),

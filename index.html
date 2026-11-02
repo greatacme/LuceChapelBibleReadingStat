@@ -27,6 +27,32 @@
       background-color: #cbd5e1;
       border-radius: 9999px;
     }
+    .completion-name {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      padding: 0.45rem 0.65rem;
+      border: 1px solid #fbbf24;
+      border-radius: 0.8rem;
+      background: linear-gradient(120deg, #fffbeb, #fef3c7, #fff7ed);
+      box-shadow: 0 2px 10px #d9770626, inset 0 1px 0 #fff;
+    }
+    .completion-name-text {
+      color: #92400e;
+      font-size: 0.95rem;
+      font-weight: 800;
+      text-shadow: 0 1px 0 #fff;
+    }
+    .completion-badge {
+      padding: 0.15rem 0.4rem;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #92400e, #b45309);
+      color: #fff;
+      font-size: 0.6rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
@@ -69,6 +95,8 @@
     </div>
   </div>
 
+  <div id="statsUpdateNotice" class="hidden bg-amber-50 px-4 py-3 text-sm text-amber-900">최신 통계 SQL 함수 적용이 필요합니다. 개인 진도율 및 대량 등록 제외 통계는 SQL 적용 후 표시됩니다.</div>
+
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
 
     <!-- 0. 상단 컨트롤 패널 (시즌 선택 / 기준일자 / 새로고침) -->
@@ -105,28 +133,20 @@
             </svg>
             <span>조회 / 새로고침</span>
           </button>
-          <div id="statusBadge" class="text-[11px] font-medium text-slate-600 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl whitespace-nowrap">
-            KST 기준일 집계
-          </div>
         </div>
 
       </div>
     </section>
 
-    <!-- 1. 개요 (Overview KPI 카드 6종) -->
+    <!-- 1. 개요 (Overview KPI 카드 7종) -->
     <section>
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
           <span>📊 통독 개요</span>
-          <span class="text-xs font-normal text-slate-600">record 등록 및 기준일자 기준 핵심 지표</span>
         </h2>
-        <div id="fullFinishBadge" class="hidden sm:inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full">
-          <span>🏆 전체 완독</span>
-          <span id="overviewAllFinishersVal">-</span>
-        </div>
       </div>
 
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4">
         
         <!-- 기간 / 일수 -->
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-col justify-between hover:border-blue-300 transition">
@@ -188,6 +208,24 @@
           </div>
         </div>
 
+        <!-- 전체 완독자 수 / 완독률 (신규) -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-blue-300/70 bg-gradient-to-br from-white to-blue-50/40 flex flex-col justify-between hover:border-blue-500 transition">
+          <div class="flex items-center justify-between text-blue-900 mb-2">
+            <span class="text-xs font-bold">전체 완독자 (1,189장)</span>
+            <span class="text-lg">🏆</span>
+          </div>
+          <div>
+            <div class="flex items-baseline gap-1.5">
+              <span id="kpiAllFinishers" class="text-2xl font-extrabold text-blue-950">-</span>
+              <span class="text-xs font-semibold text-blue-800">명</span>
+              <span id="kpiAllRate" class="text-xs font-bold text-blue-600 ml-auto">(-%)</span>
+            </div>
+            <div class="w-full bg-blue-100 h-1.5 rounded-full mt-2 overflow-hidden">
+              <div id="kpiAllProgressBar" class="bg-blue-600 h-full rounded-full transition-all duration-700" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
         <!-- 구약 완독자 수 / 완독률 -->
         <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-200/70 bg-gradient-to-br from-white to-amber-50/40 flex flex-col justify-between hover:border-amber-400 transition">
           <div class="flex items-center justify-between text-amber-800 mb-2">
@@ -227,12 +265,109 @@
       </div>
     </section>
 
+    <!-- 3. 조별 통독 현황 (차트 2종 + 완독률 표) -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+          <span>👥 조별 완독률 현황</span>
+          <span class="text-xs font-normal text-slate-600">공동체별 전체·구약·신약 완독률</span>
+        </h2>
+      </div>
+
+      <!-- 조별 완독률 현황 (섹션 카드형) -->
+      <div class="space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 px-1">
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-1.5">
+              <span>📋 조별 완독률 현황</span>
+              <span class="text-[10px] sm:text-xs bg-blue-50 text-blue-800 font-semibold px-2 py-0.5 rounded">완독 100% 기준</span>
+            </h3>
+            <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5">각 조별 인원 대비 전체(1,189장) • 구약(929장) • 신약(260장) 100% 완독 회원수 및 완독률</p>
+          </div>
+          <div class="text-[10px] sm:text-[11px] text-slate-400 font-medium">
+            * 완독률 = (완독 회원수 ÷ 조원 수) × 100
+          </div>
+        </div>
+
+        <!-- 조별 카드 그리드 (모바일 1열, PC 2열) -->
+        <div id="groupCardsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          <div class="col-span-full py-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-200/80">
+            조별 완독 데이터를 불러오는 중입니다...
+          </div>
+        </div>
+
+        <!-- 전체 조 합계 요약 바 -->
+        <div id="groupFinishersSummary" class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <!-- JS에서 동적 렌더링 -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 4. 개인 진도율 (완독자 명예의 전당) -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+            <span>🏅 개인 진도율</span>
+            <span class="text-xs font-normal text-slate-600">모든 참여자의 통독 여정</span>
+          </h2>
+          <p class="text-xs text-slate-600 mt-0.5">진도율 = 읽은 장수 ÷ 전체 장수 × 100 (대량 등록 포함)</p>
+        </div>
+
+        <!-- 검색 필터 -->
+        <div class="flex items-center gap-2">
+          <div class="relative w-full sm:w-48">
+            <input id="finisherSearchInput" type="text" placeholder="성도 이름 검색..."
+              class="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl pl-8 pr-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200"/>
+            <span class="absolute left-2.5 top-2.5 text-slate-600 text-xs">🔍</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 탭 선택 바 (전체 / 구약 / 신약) -->
+      <div class="flex gap-2 p-1 bg-slate-100/80 rounded-xl">
+        <button id="tabAll" onclick="switchFinisherTab('all')"
+          class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition text-white bg-blue-900 shadow-sm">
+          🏆 전체 진도율 (완독자 <span id="tabAllCount">0</span>명)
+        </button>
+        <button id="tabOt" onclick="switchFinisherTab('ot')"
+          class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition text-slate-600 hover:text-amber-900 hover:bg-amber-50">
+          📜 구약 진도율 (완독자 <span id="tabOtCount">0</span>명)
+        </button>
+        <button id="tabNt" onclick="switchFinisherTab('nt')"
+          class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition text-slate-600 hover:text-emerald-900 hover:bg-emerald-50">
+          ✝️ 신약 진도율 (완독자 <span id="tabNtCount">0</span>명)
+        </button>
+      </div>
+
+      <!-- 완독자 목록 테이블 -->
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50/80 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-y border-slate-200">
+              <th class="py-2.5 px-4 text-center w-16">순번</th>
+              <th class="py-2.5 px-4">성도 (닉네임)</th>
+              <th class="py-2.5 px-4">조</th>
+              <th class="py-2.5 px-4 text-right">진도율</th>
+              <th class="py-2.5 px-4 text-right">완독일자</th>
+            </tr>
+          </thead>
+          <tbody id="finishersTableBody" class="divide-y divide-slate-100 text-xs font-medium">
+            <tr>
+              <td colspan="5" class="py-8 text-center text-slate-600">개인 진도율 데이터를 불러오는 중입니다...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- 2. 일별 현황 (일자별 막대그래프 + Top 5 강조 + 월별/요일별/시간대별 차트) -->
     <section class="space-y-4">
       <div class="flex items-center justify-between">
         <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
-          <span>📈 일별 및 패턴 현황</span>
-          <span class="text-xs font-normal text-slate-600">일자별(TOP 5 강조) • 월별 • 요일별 • 시간대별 통독 패턴</span>
+          <span>📈 일별 현황</span>
+          <span class="text-xs font-normal text-slate-600">일자별 • 월별 • 요일별 평균 • 조별 통독량</span>
         </h2>
       </div>
 
@@ -289,7 +424,7 @@
                 <span class="text-indigo-500">🌱</span>
                 <span>가장 적게 읽은 날 TOP 5</span>
               </h4>
-              <span class="text-[11px] text-slate-600">활동일 기준</span>
+              <span class="text-[11px] text-slate-600">기간 내 전체 날짜 기준</span>
             </div>
             <div id="bottomDaysList" class="space-y-2">
               <p class="text-xs text-slate-600 text-center py-4">불러오는 중...</p>
@@ -300,8 +435,9 @@
 
       </div>
 
+      <p class="text-xs text-slate-600">일자별·TOP 5·요일별: 1인 하루 50장 이상 등록분 제외. 월별·조별: 대량 등록 포함.</p>
       <!-- 하단: 월별 차트 + 요일별 차트 + 시간대별 차트 (3열 배치) -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         
         <!-- 월별 차트 (막대 위 숫자 표시) -->
         <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col">
@@ -322,7 +458,7 @@
           <div class="flex items-center justify-between mb-2">
             <div>
               <h3 class="text-sm font-bold text-slate-800">요일별 통독 패턴</h3>
-              <p class="text-xs text-slate-600">일요일~토요일 요일별 통독량 (수치 표시)</p>
+              <p class="text-xs text-slate-600">요일별 총 장수 ÷ 해당 요일 일수 (기록 없는 날 포함)</p>
             </div>
             <span class="text-base">🕒</span>
           </div>
@@ -331,60 +467,7 @@
           </div>
         </div>
 
-        <!-- 시간대별 차트 (신규 추가: 00시 ~ 23시) -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col md:col-span-2 lg:col-span-1">
-          <div class="flex items-center justify-between mb-2">
-            <div>
-              <h3 class="text-sm font-bold text-slate-800">시간대별 통독 패턴</h3>
-              <p class="text-xs text-slate-600">하루 중 성경을 많이 읽는 시간대 (0시~23시)</p>
-            </div>
-            <span class="text-base">⏰</span>
-          </div>
-          <div class="relative flex-1 min-h-[220px]">
-            <canvas id="hourlyChart"></canvas>
-          </div>
-        </div>
-
       </div>
-    </section>
-
-    <!-- 3. 조별 통독 현황 (차트 2종 + 완독률 표) -->
-    <section class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
-          <span>👥 조별(그룹별) 통독 현황</span>
-          <span class="text-xs font-normal text-slate-600">공동체별 완독률 표 및 누적 통독량 비교</span>
-        </h2>
-      </div>
-
-      <!-- 조별 완독률 현황 (섹션 카드형) -->
-      <div class="space-y-3">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 px-1">
-          <div>
-            <h3 class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-1.5">
-              <span>📋 조별 완독률 현황</span>
-              <span class="text-[10px] sm:text-xs bg-blue-50 text-blue-800 font-semibold px-2 py-0.5 rounded">완독 100% 기준</span>
-            </h3>
-            <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5">각 조별 인원 대비 전체(1,189장) • 구약(929장) • 신약(260장) 100% 완독 회원수 및 완독률</p>
-          </div>
-          <div class="text-[10px] sm:text-[11px] text-slate-400 font-medium">
-            * 완독률 = (완독 회원수 ÷ 조원 수) × 100
-          </div>
-        </div>
-
-        <!-- 조별 카드 그리드 (모바일 1열, PC 2열) -->
-        <div id="groupCardsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          <div class="col-span-full py-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-200/80">
-            조별 완독 데이터를 불러오는 중입니다...
-          </div>
-        </div>
-
-        <!-- 전체 조 합계 요약 바 -->
-        <div id="groupFinishersSummary" class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <!-- JS에서 동적 렌더링 -->
-        </div>
-      </div>
-
       <!-- 조별 총 장수 vs 1인당 평균 장수 차트 (2열 배치) -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         
@@ -419,64 +502,6 @@
       </div>
     </section>
 
-    <!-- 4. 개인 통독 현황 (완독자 명예의 전당) -->
-    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-4">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-        <div>
-          <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
-            <span>🏅 개인 통독 현황</span>
-            <span class="text-xs font-normal text-slate-600">완독을 달성한 은혜의 명단</span>
-          </h2>
-          <p class="text-xs text-slate-600 mt-0.5">성경 전체 및 구약·신약 완독자 명단</p>
-        </div>
-
-        <!-- 검색 필터 -->
-        <div class="flex items-center gap-2">
-          <div class="relative w-full sm:w-48">
-            <input id="finisherSearchInput" type="text" placeholder="성도 이름 검색..."
-              class="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl pl-8 pr-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200"/>
-            <span class="absolute left-2.5 top-2.5 text-slate-600 text-xs">🔍</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 탭 선택 바 (전체 / 구약 / 신약) -->
-      <div class="flex gap-2 p-1 bg-slate-100/80 rounded-xl">
-        <button id="tabAll" onclick="switchFinisherTab('all')"
-          class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition text-white bg-blue-900 shadow-sm">
-          🏆 전체 완독 (<span id="tabAllCount">0</span>명)
-        </button>
-        <button id="tabOt" onclick="switchFinisherTab('ot')"
-          class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition text-slate-600 hover:text-amber-900 hover:bg-amber-50">
-          📜 구약 완독 (<span id="tabOtCount">0</span>명)
-        </button>
-        <button id="tabNt" onclick="switchFinisherTab('nt')"
-          class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition text-slate-600 hover:text-emerald-900 hover:bg-emerald-50">
-          ✝️ 신약 완독 (<span id="tabNtCount">0</span>명)
-        </button>
-      </div>
-
-      <!-- 완독자 목록 테이블 -->
-      <div class="overflow-x-auto custom-scrollbar">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="bg-slate-50/80 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-y border-slate-200">
-              <th class="py-2.5 px-4 text-center w-16">순번</th>
-              <th class="py-2.5 px-4">성도 (닉네임)</th>
-              <th class="py-2.5 px-4">소속 조</th>
-              <th class="py-2.5 px-4 text-right">완료 장수</th>
-              <th class="py-2.5 px-4 text-right">완독 달성일</th>
-            </tr>
-          </thead>
-          <tbody id="finishersTableBody" class="divide-y divide-slate-100 text-xs font-medium">
-            <tr>
-              <td colspan="5" class="py-8 text-center text-slate-600">완독자 데이터를 불러오는 중입니다...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
   </main>
 
   <!-- 푸터 -->
@@ -488,7 +513,7 @@
         <span>Luce Chapel Bible Reading</span>
       </div>
       <div>
-        데이터베이스: ReadBible2026 Supabase 연동 • ver.1.2.2026.1102
+        데이터베이스: ReadBible2026 Supabase 연동 • ver 1.3.2026.1103
       </div>
     </div>
   </footer>
@@ -651,6 +676,14 @@
       }
 
       // 화면 렌더링
+      const isCurrentStats = dashboardData.stats_version === '1.3.2026.1103'
+      document.getElementById('statsUpdateNotice').classList.toggle('hidden', isCurrentStats)
+      if (!isCurrentStats) {
+        dashboardData.daily_trend = []
+        dashboardData.top_days = []
+        dashboardData.bottom_days = []
+        dashboardData.day_of_week = []
+      }
       renderDashboard()
     }
 
@@ -670,6 +703,10 @@
       document.getElementById('kpiTotalChapters').textContent = Number(overview.total_read_chapters || 0).toLocaleString()
       document.getElementById('kpiDailyAvg').textContent = Number(overview.daily_avg_per_user || 0).toFixed(2)
 
+      document.getElementById('kpiAllFinishers').textContent = Number(overview.all_finishers_cnt || 0).toLocaleString()
+      document.getElementById('kpiAllRate').textContent = `${Number(overview.all_rate || 0).toFixed(1)}%`
+      document.getElementById('kpiAllProgressBar').style.width = `${Math.min(100, overview.all_rate || 0)}%`
+
       // 구약 완독자
       document.getElementById('kpiOtFinishers').textContent = Number(overview.ot_finishers_cnt || 0).toLocaleString()
       document.getElementById('kpiOtRate').textContent = `${Number(overview.ot_rate || 0).toFixed(1)}%`
@@ -680,9 +717,6 @@
       document.getElementById('kpiNtRate').textContent = `${Number(overview.nt_rate || 0).toFixed(1)}%`
       document.getElementById('kpiNtProgressBar').style.width = `${Math.min(100, overview.nt_rate || 0)}%`
 
-      // 전체 완독 뱃지
-      document.getElementById('overviewAllFinishersVal').textContent = `${overview.all_finishers_cnt || 0}명 (${overview.all_rate || 0}%)`
-
       // 2. Top 5 / Bottom 5 렌더링
       renderTopBottomDays(top_days || [], bottom_days || [])
 
@@ -690,20 +724,15 @@
       renderDailyTrendBarChart(daily_trend || [], top_days || [])
       renderMonthlyChart(monthly || [])
       renderDowChart(day_of_week || [])
-      renderHourlyChart(hourly || [])
       renderGroupCharts(groups || [])
 
       // 4. 조별 완독률 현황 카드 렌더링 (섹션 카드형)
       renderGroupCards(groups || [], overview || {})
 
       // 5. 완독자 탭 카운트 및 목록 렌더링
-      const allList = finishers?.all || []
-      const otList = finishers?.ot || []
-      const ntList = finishers?.nt || []
-
-      document.getElementById('tabAllCount').textContent = allList.length
-      document.getElementById('tabOtCount').textContent = otList.length
-      document.getElementById('tabNtCount').textContent = ntList.length
+      document.getElementById('tabAllCount').textContent = Number(overview.all_finishers_cnt || 0).toLocaleString()
+      document.getElementById('tabOtCount').textContent = Number(overview.ot_finishers_cnt || 0).toLocaleString()
+      document.getElementById('tabNtCount').textContent = Number(overview.nt_finishers_cnt || 0).toLocaleString()
 
       renderFinishersTable()
     }
@@ -882,8 +911,8 @@
         data: {
           labels: data.map(d => `${d.day}요일`),
           datasets: [{
-            label: '요일별 읽은 장수',
-            data: data.map(d => d.chapters),
+            label: '요일별 하루 평균 읽은 장수',
+            data: data.map(d => d.avg_chapters),
             backgroundColor: colors,
             borderRadius: 6
           }]
@@ -1207,50 +1236,54 @@
       tabOt.className = (tab === 'ot') ? activeClass + 'bg-amber-900' : inactiveClass
       tabNt.className = (tab === 'nt') ? activeClass + 'bg-emerald-900' : inactiveClass
 
-      if (typeof confetti === 'function') {
-        confetti({ particleCount: 30, spread: 60, origin: { y: 0.85 } })
-      }
-
       renderFinishersTable()
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[c])
     }
 
     function renderFinishersTable() {
       if (!dashboardData) return
       const tbody = document.getElementById('finishersTableBody')
       const filterText = document.getElementById('finisherSearchInput').value.trim().toLowerCase()
-
-      const list = dashboardData.finishers?.[currentFinisherTab] || []
-      const filtered = list.filter(item => {
-        if (!filterText) return true
-        return (item.nickname && item.nickname.toLowerCase().includes(filterText)) ||
-               (item.group_nm && item.group_nm.toLowerCase().includes(filterText))
-      })
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="5" class="py-10 text-center text-slate-600">
-              ${filterText ? `'${filterText}' 검색 결과가 없습니다.` : '해당 부문의 완독자가 아직 없습니다.'}
-            </td>
-          </tr>
-        `
+      if (!Array.isArray(dashboardData.personal_progress)) {
+        tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-600">개인 진도율 조회를 위해 최신 통계 SQL 함수를 적용해 주세요.</td></tr>'
         return
       }
-
-      tbody.innerHTML = filtered.map((item, index) => {
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`
-        return `
-          <tr class="hover:bg-blue-50/40 transition">
-            <td class="py-3 px-4 text-center font-bold ${index < 3 ? 'text-base' : 'text-slate-600'}">${medal}</td>
-            <td class="py-3 px-4 font-bold text-slate-900 flex items-center gap-1.5">
-              <span>${item.nickname}</span>
-              ${index < 3 ? '<span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">TOP ' + (index+1) + '</span>' : ''}
-            </td>
-            <td class="py-3 px-4 text-slate-600">${item.group_nm || '개인'}</td>
-            <td class="py-3 px-4 text-right font-extrabold text-blue-900">${Number(item.chapters).toLocaleString()} 장</td>
-            <td class="py-3 px-4 text-right text-slate-600 font-mono">${item.finished_at || '-'}</td>
-          </tr>
-        `
+      const config = {
+        all: { count: 'total_count', total: 1189, date: 'all_finished_at' },
+        ot: { count: 'ot_count', total: 929, date: 'ot_finished_at' },
+        nt: { count: 'nt_count', total: 260, date: 'nt_finished_at' }
+      }[currentFinisherTab]
+      const list = [...dashboardData.personal_progress].sort((a, b) =>
+        Number(b[config.count] || 0) - Number(a[config.count] || 0) ||
+        String(a[config.date] || '9999').localeCompare(String(b[config.date] || '9999')) ||
+        String(a.nickname || '').localeCompare(String(b.nickname || ''), 'ko') ||
+        String(a.user_id || '').localeCompare(String(b.user_id || '')))
+      const filtered = list.map((item, index) => ({item, rank: index + 1})).filter(({item}) =>
+        !filterText || String(item.nickname || '').toLowerCase().includes(filterText) ||
+        String(item.group_nm || '').toLowerCase().includes(filterText))
+      if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="py-10 text-center text-slate-600">' +
+          (filterText ? '검색 결과가 없습니다.' : '참여자가 아직 없습니다.') + '</td></tr>'
+        return
+      }
+      tbody.innerHTML = filtered.map(({item, rank}) => {
+        const chapters = Number(item[config.count] || 0)
+        const rate = chapters / config.total * 100
+        const isComplete = chapters >= config.total
+        return `<tr class="${isComplete ? 'bg-amber-50/70 hover:bg-amber-100/70' : 'hover:bg-blue-50/40'} transition">
+          <td class="py-3 px-4 text-center text-slate-600">${rank}</td>
+          <td class="py-3 px-4 font-bold text-slate-900">${isComplete
+            ? `<span class="completion-name"><span aria-hidden="true">👑</span><span class="completion-name-text">${escapeHtml(item.nickname)}</span><span class="completion-badge">✦ 완독</span></span>`
+            : escapeHtml(item.nickname)}</td>
+          <td class="py-3 px-4 text-slate-600">${escapeHtml(item.group_nm || '개인')}</td>
+          <td class="py-3 px-4 text-right font-extrabold text-blue-900 whitespace-nowrap">${rate.toFixed(0)}% (${chapters.toLocaleString()}/${config.total.toLocaleString()})</td>
+          <td class="py-3 px-4 text-right text-slate-600 font-mono">${chapters >= config.total ? escapeHtml(item[config.date] || '-') : '-'}</td>
+        </tr>`
       }).join('')
     }
 
@@ -1326,6 +1359,7 @@
       ]
 
       return {
+        stats_version: '1.3.2026.1103',
         ministry: { code_cd: ministryCd, code_nm: '2026 연세대학교회 성경통독', description: '연세대학교회 기본' },
         as_of_date: baseDate,
         overview: {
@@ -1355,17 +1389,18 @@
           { month: '2026-09', chapters: 7300 },
           { month: '2026-10', chapters: 18196 }
         ],
-        day_of_week: [
-          { num: 0, day: '일', chapters: 12850 },
-          { num: 1, day: '월', chapters: 8120 },
-          { num: 2, day: '화', chapters: 7950 },
-          { num: 3, day: '수', chapters: 8300 },
-          { num: 4, day: '목', chapters: 7650 },
-          { num: 5, day: '금', chapters: 7426 },
-          { num: 6, day: '토', chapters: 8400 }
-        ],
+        day_of_week: ['일', '월', '화', '수', '목', '금', '토'].map((day, num) => {
+          const days = dailyTrend.filter(d => new Date(d.date + 'T00:00:00Z').getUTCDay() === num)
+          const total = days.reduce((sum, d) => sum + d.chapters, 0)
+          return { num, day, avg_chapters: days.length ? Number((total / days.length).toFixed(1)) : 0 }
+        }),
         hourly: hourlyData,
         groups: mockGroups,
+        personal_progress: [
+          { user_id: 'sample-1', nickname: '샘플 성도 1', group_nm: '제2청장년회', total_count: 1189, ot_count: 929, nt_count: 260, all_finished_at: '2026-09-14', ot_finished_at: '2026-08-20', nt_finished_at: '2026-06-12' },
+          { user_id: 'sample-2', nickname: '샘플 성도 2', group_nm: '개인', total_count: 650, ot_count: 450, nt_count: 200 },
+          { user_id: 'sample-3', nickname: '샘플 성도 3', group_nm: '개인', total_count: 0, ot_count: 0, nt_count: 0 }
+        ],
         finishers: {
           all: [
             { nickname: '김윤정', group_nm: '개인', chapters: 1189, finished_at: '2026-09-14' },
