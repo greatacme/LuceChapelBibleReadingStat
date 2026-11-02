@@ -358,43 +358,43 @@
       </div>
 
       <!-- 조별 완독률 현황 표 (행: 조 / 열: 전체, 구약, 신약) -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-3">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-3 sm:p-5 space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-slate-100 pb-2.5">
           <div>
             <h3 class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-1.5">
               <span>📋 조별 완독률 현황</span>
-              <span class="text-xs bg-blue-50 text-blue-800 font-semibold px-2 py-0.5 rounded">완독 100% 기준</span>
+              <span class="text-[10px] sm:text-xs bg-blue-50 text-blue-800 font-semibold px-1.5 py-0.5 rounded">완독 100% 기준</span>
             </h3>
-            <p class="text-xs text-slate-600 mt-0.5">각 조별 인원 대비 전체(1,189장) • 구약(929장) • 신약(260장) 100% 완독 회원수 및 완독률</p>
+            <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5">조원 수 대비 전체(1,189장) • 구약(929장) • 신약(260장) 100% 완독 회원수 및 완독률</p>
           </div>
-          <div class="text-[11px] text-slate-600 font-medium">
-            * 완독률 = (완독 100% 회원수 ÷ 조원 수) × 100
+          <div class="text-[10px] sm:text-[11px] text-slate-400 font-medium">
+            * 완독률 = (완독 회원수 ÷ 조원 수) × 100
           </div>
         </div>
 
         <div class="overflow-x-auto custom-scrollbar">
-          <table class="w-full text-left border-collapse">
+          <table class="w-full text-left border-collapse table-auto">
             <thead>
-              <tr class="bg-slate-50/90 text-slate-700 text-xs font-bold border-y border-slate-200">
-                <th class="py-3 px-4 w-12 text-center">순번</th>
-                <th class="py-3 px-4 min-w-[140px]">조 (공동체)</th>
-                <th class="py-3 px-4 text-center min-w-[80px]">조원 수</th>
-                <th class="py-3 px-4 text-center min-w-[160px] bg-blue-50/60 text-blue-950 border-x border-slate-200/70">
-                  <div class="flex items-center justify-center gap-1">
-                    <span>🏆 전체 완독</span>
-                    <span class="text-[10px] text-blue-700 font-normal">(1,189장)</span>
+              <tr class="bg-slate-50/90 text-slate-700 text-[11px] sm:text-xs font-bold border-y border-slate-200">
+                <th class="py-2.5 px-1 sm:px-2 w-8 sm:w-10 text-center">순번</th>
+                <th class="py-2.5 px-2 sm:px-3 whitespace-nowrap">조 (공동체)</th>
+                <th class="py-2.5 px-1.5 sm:px-2 text-center whitespace-nowrap">조원</th>
+                <th class="py-2 px-1.5 sm:px-2 text-center min-w-[85px] sm:min-w-[105px] bg-blue-50/60 text-blue-950 border-x border-slate-200/70">
+                  <div class="flex flex-col items-center justify-center leading-tight">
+                    <span>🏆 전체<span class="hidden sm:inline"> 완독</span></span>
+                    <span class="text-[9px] sm:text-[10px] text-blue-700 font-normal">(1,189장)</span>
                   </div>
                 </th>
-                <th class="py-3 px-4 text-center min-w-[160px] bg-amber-50/60 text-amber-950 border-r border-slate-200/70">
-                  <div class="flex items-center justify-center gap-1">
-                    <span>📜 구약 완독</span>
-                    <span class="text-[10px] text-amber-800 font-normal">(929장)</span>
+                <th class="py-2 px-1.5 sm:px-2 text-center min-w-[85px] sm:min-w-[105px] bg-amber-50/60 text-amber-950 border-r border-slate-200/70">
+                  <div class="flex flex-col items-center justify-center leading-tight">
+                    <span>📜 구약<span class="hidden sm:inline"> 완독</span></span>
+                    <span class="text-[9px] sm:text-[10px] text-amber-800 font-normal">(929장)</span>
                   </div>
                 </th>
-                <th class="py-3 px-4 text-center min-w-[160px] bg-emerald-50/60 text-emerald-950">
-                  <div class="flex items-center justify-center gap-1">
-                    <span>✝️ 신약 완독</span>
-                    <span class="text-[10px] text-emerald-800 font-normal">(260장)</span>
+                <th class="py-2 px-1.5 sm:px-2 text-center min-w-[85px] sm:min-w-[105px] bg-emerald-50/60 text-emerald-950">
+                  <div class="flex flex-col items-center justify-center leading-tight">
+                    <span>✝️ 신약<span class="hidden sm:inline"> 완독</span></span>
+                    <span class="text-[9px] sm:text-[10px] text-emerald-800 font-normal">(260장)</span>
                   </div>
                 </th>
               </tr>
@@ -1111,39 +1111,39 @@
 
         return `
           <tr class="hover:bg-slate-50/80 transition">
-            <td class="py-3 px-4 text-center font-bold text-slate-600">${idx + 1}</td>
-            <td class="py-3 px-4 font-bold text-slate-900">${g.group_nm}</td>
-            <td class="py-3 px-4 text-center font-semibold text-slate-700">${userCnt.toLocaleString()}명</td>
+            <td class="py-2.5 px-1 sm:px-2 text-center font-bold text-slate-400 text-[11px] sm:text-xs">${idx + 1}</td>
+            <td class="py-2.5 px-2 sm:px-3 font-bold text-slate-900 whitespace-nowrap text-xs">${g.group_nm}</td>
+            <td class="py-2.5 px-1.5 sm:px-2 text-center font-semibold text-slate-700 whitespace-nowrap text-[11px] sm:text-xs">${userCnt.toLocaleString()}명</td>
             
             <!-- 전체 완독 (1,189장) -->
-            <td class="py-3 px-4 text-center bg-blue-50/30 border-x border-slate-200/50">
-              <div class="flex items-center justify-center gap-1.5">
-                <span class="font-extrabold text-blue-900">${allCnt}명</span>
-                <span class="text-[11px] font-bold text-blue-700 bg-blue-100/70 px-1.5 py-0.5 rounded">(${allRate}%)</span>
+            <td class="py-2 px-1.5 sm:px-2 text-center bg-blue-50/30 border-x border-slate-200/50">
+              <div class="flex items-center justify-center gap-1 leading-none">
+                <span class="font-extrabold text-blue-900 text-xs">${allCnt}명</span>
+                <span class="text-[10px] font-bold text-blue-700 bg-blue-100/70 px-1 py-0.5 rounded leading-none">${allRate}%</span>
               </div>
-              <div class="w-24 mx-auto bg-blue-100 h-1.5 rounded-full mt-1.5 overflow-hidden">
+              <div class="w-14 sm:w-20 mx-auto bg-blue-100 h-1 rounded-full mt-1.5 overflow-hidden">
                 <div class="bg-blue-600 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, g.all_rate || 0)}%"></div>
               </div>
             </td>
 
             <!-- 구약 완독 (929장) -->
-            <td class="py-3 px-4 text-center bg-amber-50/30 border-r border-slate-200/50">
-              <div class="flex items-center justify-center gap-1.5">
-                <span class="font-extrabold text-amber-950">${otCnt}명</span>
-                <span class="text-[11px] font-bold text-amber-800 bg-amber-100/70 px-1.5 py-0.5 rounded">(${otRate}%)</span>
+            <td class="py-2 px-1.5 sm:px-2 text-center bg-amber-50/30 border-r border-slate-200/50">
+              <div class="flex items-center justify-center gap-1 leading-none">
+                <span class="font-extrabold text-amber-950 text-xs">${otCnt}명</span>
+                <span class="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-1 py-0.5 rounded leading-none">${otRate}%</span>
               </div>
-              <div class="w-24 mx-auto bg-amber-100 h-1.5 rounded-full mt-1.5 overflow-hidden">
+              <div class="w-14 sm:w-20 mx-auto bg-amber-100 h-1 rounded-full mt-1.5 overflow-hidden">
                 <div class="bg-amber-600 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, g.ot_rate || 0)}%"></div>
               </div>
             </td>
 
             <!-- 신약 완독 (260장) -->
-            <td class="py-3 px-4 text-center bg-emerald-50/30">
-              <div class="flex items-center justify-center gap-1.5">
-                <span class="font-extrabold text-emerald-950">${ntCnt}명</span>
-                <span class="text-[11px] font-bold text-emerald-800 bg-emerald-100/70 px-1.5 py-0.5 rounded">(${ntRate}%)</span>
+            <td class="py-2 px-1.5 sm:px-2 text-center bg-emerald-50/30">
+              <div class="flex items-center justify-center gap-1 leading-none">
+                <span class="font-extrabold text-emerald-950 text-xs">${ntCnt}명</span>
+                <span class="text-[10px] font-bold text-emerald-800 bg-emerald-100/70 px-1 py-0.5 rounded leading-none">${ntRate}%</span>
               </div>
-              <div class="w-24 mx-auto bg-emerald-100 h-1.5 rounded-full mt-1.5 overflow-hidden">
+              <div class="w-14 sm:w-20 mx-auto bg-emerald-100 h-1 rounded-full mt-1.5 overflow-hidden">
                 <div class="bg-emerald-600 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, g.nt_rate || 0)}%"></div>
               </div>
             </td>
@@ -1158,20 +1158,20 @@
 
       tfoot.innerHTML = `
         <tr class="bg-slate-100/90 text-slate-900 border-t-2 border-slate-300">
-          <td class="py-3.5 px-4 text-center font-bold text-slate-600">합계</td>
-          <td class="py-3.5 px-4 font-extrabold">전체 (${sorted.length}개 조)</td>
-          <td class="py-3.5 px-4 text-center font-extrabold text-slate-800">${sumUsers.toLocaleString()}명</td>
-          <td class="py-3.5 px-4 text-center text-blue-950 bg-blue-100/50 border-x border-slate-300 font-bold">
-            <span class="font-extrabold text-sm text-blue-900">${sumAll}명</span>
-            <span class="text-xs font-extrabold text-blue-700 ml-1">(${totalAllRate}%)</span>
+          <td class="py-2.5 px-1 sm:px-2 text-center font-bold text-slate-500 text-[11px]">합계</td>
+          <td class="py-2.5 px-2 sm:px-3 font-extrabold text-xs whitespace-nowrap">전체 (${sorted.length}개 조)</td>
+          <td class="py-2.5 px-1.5 sm:px-2 text-center font-extrabold text-slate-800 text-[11px] whitespace-nowrap">${sumUsers.toLocaleString()}명</td>
+          <td class="py-2.5 px-1.5 sm:px-2 text-center text-blue-950 bg-blue-100/50 border-x border-slate-300">
+            <span class="font-extrabold text-xs text-blue-900">${sumAll}명</span>
+            <span class="text-[10px] font-extrabold text-blue-700 ml-0.5">(${totalAllRate}%)</span>
           </td>
-          <td class="py-3.5 px-4 text-center text-amber-950 bg-amber-100/50 border-r border-slate-300 font-bold">
-            <span class="font-extrabold text-sm text-amber-950">${sumOt}명</span>
-            <span class="text-xs font-extrabold text-amber-800 ml-1">(${totalOtRate}%)</span>
+          <td class="py-2.5 px-1.5 sm:px-2 text-center text-amber-950 bg-amber-100/50 border-r border-slate-300">
+            <span class="font-extrabold text-xs text-amber-950">${sumOt}명</span>
+            <span class="text-[10px] font-extrabold text-amber-800 ml-0.5">(${totalOtRate}%)</span>
           </td>
-          <td class="py-3.5 px-4 text-center text-emerald-950 bg-emerald-100/50 font-bold">
-            <span class="font-extrabold text-sm text-emerald-950">${sumNt}명</span>
-            <span class="text-xs font-extrabold text-emerald-800 ml-1">(${totalNtRate}%)</span>
+          <td class="py-2.5 px-1.5 sm:px-2 text-center text-emerald-950 bg-emerald-100/50">
+            <span class="font-extrabold text-xs text-emerald-950">${sumNt}명</span>
+            <span class="text-[10px] font-extrabold text-emerald-800 ml-0.5">(${totalNtRate}%)</span>
           </td>
         </tr>
       `
