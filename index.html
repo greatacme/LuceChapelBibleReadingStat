@@ -53,6 +53,21 @@
       font-weight: 800;
       white-space: nowrap;
     }
+    .personal-progress-table th { font-size: 10px; }
+    .personal-progress-table td { overflow-wrap: anywhere; }
+    @media (max-width: 639px) {
+      .personal-progress-table { font-size: 11px; }
+      .personal-progress-table .completion-name {
+        max-width: 100%;
+        gap: 0.15rem;
+        padding: 0.25rem;
+        border-radius: 0.5rem;
+      }
+      .personal-progress-table .completion-name-text { font-size: 0.75rem; }
+      .personal-progress-table .completion-badge { font-size: 8px; padding: 0.1rem 0.25rem; }
+      .personal-progress-table th:last-child,
+      .personal-progress-table td:last-child { white-space: nowrap; }
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
@@ -296,16 +311,12 @@
           </div>
         </div>
 
-        <!-- 전체 조 합계 요약 바 -->
-        <div id="groupFinishersSummary" class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <!-- JS에서 동적 렌더링 -->
         </div>
-      </div>
 
     </section>
 
     <!-- 4. 개인 진도율 (완독자 명예의 전당) -->
-    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-4">
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-3 sm:p-5 space-y-4">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div>
           <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -343,14 +354,17 @@
 
       <!-- 완독자 목록 테이블 -->
       <div class="overflow-x-auto custom-scrollbar">
-        <table class="w-full text-left border-collapse">
+        <table class="personal-progress-table w-full table-fixed text-left border-collapse">
+          <colgroup>
+            <col style="width:8%"><col style="width:28%"><col style="width:20%"><col style="width:27%"><col style="width:17%">
+          </colgroup>
           <thead>
             <tr class="bg-slate-50/80 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-y border-slate-200">
-              <th class="py-2.5 px-4 text-center w-16">순번</th>
-              <th class="py-2.5 px-4">성도 (닉네임)</th>
-              <th class="py-2.5 px-4">조</th>
-              <th class="py-2.5 px-4 text-right">진도율</th>
-              <th class="py-2.5 px-4 text-right">완독일자</th>
+              <th class="py-2 px-1 sm:px-2 text-center">순번</th>
+              <th class="py-2 px-1 sm:px-2">성도<span class="hidden sm:inline"> (닉네임)</span></th>
+              <th class="py-2 px-1 sm:px-2">조</th>
+              <th class="py-2 px-1 sm:px-2 text-right">진도율</th>
+              <th class="py-2 px-1 sm:px-2 text-right">완독일자</th>
             </tr>
           </thead>
           <tbody id="finishersTableBody" class="divide-y divide-slate-100 text-xs font-medium">
@@ -1078,11 +1092,9 @@
     // =========================================================================
     function renderGroupCards(groups, overview) {
       const container = document.getElementById('groupCardsGrid')
-      const summaryEl = document.getElementById('groupFinishersSummary')
 
       if (!groups || groups.length === 0) {
         container.innerHTML = '<div class="col-span-full py-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-200/80">등록된 조별 데이터가 없습니다.</div>'
-        if (summaryEl) summaryEl.innerHTML = ''
         return
       }
 
@@ -1093,10 +1105,6 @@
         (Number(b.total_chapters || 0) - Number(a.total_chapters || 0))
       )
 
-      let sumUsers = 0
-      let sumAll = 0
-      let sumOt = 0
-      let sumNt = 0
 
       container.innerHTML = sorted.map((g, idx) => {
         const userCnt = Number(g.user_count || 0)
@@ -1107,10 +1115,6 @@
         const otRate = Number(g.ot_rate || 0).toFixed(1)
         const ntRate = Number(g.nt_rate || 0).toFixed(1)
 
-        sumUsers += userCnt
-        sumAll += allCnt
-        sumOt += otCnt
-        sumNt += ntCnt
 
         const rankBadge = idx === 0 ? '🥇 1위' : idx === 1 ? '🥈 2위' : idx === 2 ? '🥉 3위' : `${idx + 1}위`
         const rankColor = idx === 0 ? 'bg-amber-100 text-amber-900 border-amber-300' :
@@ -1186,36 +1190,6 @@
         `
       }).join('')
 
-      // 합계 요약 바 (전체 조 통계)
-      if (summaryEl) {
-        const totalAllRate = sumUsers > 0 ? (sumAll / sumUsers * 100).toFixed(1) : '0.0'
-        const totalOtRate = sumUsers > 0 ? (sumOt / sumUsers * 100).toFixed(1) : '0.0'
-        const totalNtRate = sumUsers > 0 ? (sumNt / sumUsers * 100).toFixed(1) : '0.0'
-
-        summaryEl.innerHTML = `
-          <div class="flex items-center gap-2">
-            <span class="font-extrabold text-slate-800 text-sm">📊 전체 합계 요약</span>
-            <span class="text-slate-500 text-xs">총 ${sorted.length}개 조 / ${sumUsers.toLocaleString()}명</span>
-          </div>
-          <div class="flex flex-wrap items-center gap-2.5 sm:gap-4 text-xs">
-            <div class="flex items-center gap-1.5 bg-blue-50 border border-blue-200/70 px-2.5 py-1 rounded-lg">
-              <span class="text-blue-900 font-semibold">전체완독:</span>
-              <span class="font-extrabold text-blue-950">${sumAll}명</span>
-              <span class="text-blue-700 font-bold">(${totalAllRate}%)</span>
-            </div>
-            <div class="flex items-center gap-1.5 bg-amber-50 border border-amber-200/70 px-2.5 py-1 rounded-lg">
-              <span class="text-amber-950 font-semibold">구약완독:</span>
-              <span class="font-extrabold text-amber-950">${sumOt}명</span>
-              <span class="text-amber-800 font-bold">(${totalOtRate}%)</span>
-            </div>
-            <div class="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200/70 px-2.5 py-1 rounded-lg">
-              <span class="text-emerald-950 font-semibold">신약완독:</span>
-              <span class="font-extrabold text-emerald-950">${sumNt}명</span>
-              <span class="text-emerald-800 font-bold">(${totalNtRate}%)</span>
-            </div>
-          </div>
-        `
-      }
     }
 
     // =========================================================================
@@ -1276,13 +1250,13 @@
         const rate = chapters / config.total * 100
         const isComplete = chapters >= config.total
         return `<tr class="${isComplete ? 'bg-amber-50/70 hover:bg-amber-100/70' : 'hover:bg-blue-50/40'} transition">
-          <td class="py-3 px-4 text-center text-slate-600">${rank}</td>
-          <td class="py-3 px-4 font-bold text-slate-900">${isComplete
+          <td class="py-2 px-1 sm:px-2 text-center text-slate-600">${rank}</td>
+          <td class="py-2 px-1 sm:px-2 font-bold text-slate-900">${isComplete
             ? `<span class="completion-name"><span aria-hidden="true">👑</span><span class="completion-name-text">${escapeHtml(item.nickname)}</span><span class="completion-badge">✦ 완독</span></span>`
             : escapeHtml(item.nickname)}</td>
-          <td class="py-3 px-4 text-slate-600">${escapeHtml(item.group_nm || '개인')}</td>
-          <td class="py-3 px-4 text-right font-extrabold text-blue-900 whitespace-nowrap">${rate.toFixed(0)}% (${chapters.toLocaleString()}/${config.total.toLocaleString()})</td>
-          <td class="py-3 px-4 text-right text-slate-600 font-mono">${chapters >= config.total ? escapeHtml(item[config.date] || '-') : '-'}</td>
+          <td class="py-2 px-1 sm:px-2 text-slate-600">${escapeHtml(item.group_nm || '개인')}</td>
+          <td class="py-2 px-1 sm:px-2 text-right font-extrabold text-blue-900 whitespace-nowrap">${rate.toFixed(0)}%<span class="block text-[9px] sm:text-[11px] font-medium text-slate-500 mt-0.5">(${chapters.toLocaleString()}/${config.total.toLocaleString()})</span></td>
+          <td class="py-2 px-1 sm:px-2 text-right text-slate-600 font-mono">${chapters >= config.total ? escapeHtml(item[config.date] ? String(item[config.date]).slice(5, 10) : '-') : '-'}</td>
         </tr>`
       }).join('')
     }
