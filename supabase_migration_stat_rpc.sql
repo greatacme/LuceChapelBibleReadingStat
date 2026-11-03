@@ -1,3 +1,4 @@
+-- 전체 완료 기록 기준 집계: 날짜 필터 없음, 기간은 최초~최종 기록일(양 끝 포함).
 -- ============================================================
 -- Luce Chapel Bible Reading 종합 통계 RPC 함수 (ver 1.3.2026.1103)
 -- ============================================================
@@ -11,7 +12,8 @@
 
 CREATE OR REPLACE FUNCTION public.get_bible_reading_stats(
   p_ministry_cd TEXT DEFAULT '0',
-  p_base_date   DATE DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Seoul')::DATE
+  -- 기존 호출 호환용 인자. 날짜 필터는 적용하지 않음.
+  p_base_date   DATE DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -55,7 +57,7 @@ BEGIN
     JOIN (SELECT DISTINCT plan_set_cd FROM tgt_groups) g ON pl.plan_set_cd = g.plan_set_cd
     LEFT JOIN public.book b ON b.name_ko = pl.book
   ),
-  -- 5. 완료된 읽기 기록 (KST 기준일자 이전)
+  -- 5. 해당 시즌의 전체 완료 기록 (날짜 제한 없음, KST로 날짜/시간 집계)
   tgt_records AS (
     SELECT r.id,
            r.user_id,
@@ -73,7 +75,6 @@ BEGIN
     JOIN tgt_users u ON r.user_id = u.id
     JOIN tgt_plans tp ON r.plan_id = tp.id
     WHERE r.completed = true
-      AND (r.updated_at AT TIME ZONE 'Asia/Seoul')::DATE <= p_base_date
   ),
   -- 1인 KST 하루 50장 이상인 사용자/날짜의 기록만 패턴 통계에서 제외.
   -- 개요/월별/조별/개인 진도율은 원본 tgt_records를 그대로 사용.
@@ -123,10 +124,10 @@ BEGIN
     FROM ranked_records
     GROUP BY user_id
   ),
-  -- 8. 기간 범위: record 테이블의 첫 기록일 ~ 기준일자(p_base_date)
+  -- 8. 기간 범위: 대량 등록을 포함한 전체 완료 기록의 첫 기록일 ~ 마지막 기록일
   record_range AS (
-    SELECT COALESCE(MIN(read_date), p_base_date) AS start_date,
-           p_base_date AS end_date
+    SELECT MIN(read_date) AS start_date,
+           MAX(read_date) AS end_date
     FROM tgt_records
   ),
   -- 9. 사용자별 누적 완독 현황
@@ -153,7 +154,7 @@ BEGIN
     SELECT
       rr.start_date::TEXT AS start_date,
       rr.end_date::TEXT AS end_date,
-      GREATEST(1, (rr.end_date - rr.start_date + 1)) AS elapsed_days,
+      COALESCE(rr.end_date - rr.start_date + 1, 0) AS elapsed_days,
       (SELECT COUNT(*) FROM tgt_users) AS total_users,
       (SELECT COUNT(DISTINCT user_id) FROM tgt_records) AS active_users,
       (SELECT COUNT(*) FROM tgt_records) AS total_read_chapters,
@@ -319,7 +320,7 @@ BEGIN
       'code_nm', (SELECT ministry_nm FROM ministry_info),
       'description', (SELECT ministry_desc FROM ministry_info)
     ),
-    'as_of_date', p_base_date::TEXT,
+    'period_basis', 'record_span',
     'overview', (SELECT TO_JSONB(overview_data.*) FROM overview_data),
     'daily_trend', (SELECT json_val FROM daily_trend),
     'top_days', (SELECT json_val FROM top_days),
