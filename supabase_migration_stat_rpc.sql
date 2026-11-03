@@ -235,7 +235,7 @@ BEGIN
       GROUP BY d.num, d.name
     ) sub
   ),
-  -- 16. 시간대별 차트 (0시~23시)
+  -- 16. 시간대별 차트 (0시~23시, 1인 하루 50장 이상 등록분 제외)
   hourly_data AS (
     SELECT COALESCE(JSONB_AGG(sub), '[]'::JSONB) AS json_val
     FROM (
@@ -246,7 +246,7 @@ BEGIN
              TO_CHAR(h.h, 'FM00') || '시' AS hour_label,
              COALESCE(COUNT(r.id), 0)::BIGINT AS chapters
       FROM hours h
-      LEFT JOIN tgt_records r ON r.hour_num = h.h
+      LEFT JOIN pattern_records r ON r.hour_num = h.h
       GROUP BY h.h
       ORDER BY h.h ASC
     ) sub
