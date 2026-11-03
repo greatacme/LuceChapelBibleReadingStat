@@ -124,7 +124,7 @@
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
 
-    <!-- 0. 상단 컨트롤 패널 (시즌 선택 / 새로고침) -->
+    <!-- 0. 상단 컨트롤 패널 (시즌 선택) -->
     <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 sm:p-5">
       <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         
@@ -143,15 +143,6 @@
 
         </div>
 
-        <div class="flex items-center justify-end gap-2.5">
-          <button id="refreshBtn" onclick="loadDashboardData()"
-            class="inline-flex items-center gap-1.5 bg-blue-800 hover:bg-blue-900 active:scale-95 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-sm">
-            <svg id="refreshIcon" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-            </svg>
-            <span>조회 / 새로고침</span>
-          </button>
-        </div>
 
       </div>
     </section>
@@ -363,8 +354,8 @@
           </colgroup>
           <thead>
             <tr class="bg-slate-50/80 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-y border-slate-200">
-              <th class="py-2 px-1 sm:px-2 text-center">순번</th>
-              <th class="py-2 px-1 sm:px-2 text-center">성도<span class="hidden sm:inline"> (닉네임)</span></th>
+              <th class="py-2 px-1 sm:px-2 text-center">no.</th>
+              <th class="py-2 px-1 sm:px-2 text-center">성도(닉네임)</th>
               <th class="py-2 px-1 sm:px-2 text-center">조</th>
               <th class="py-2 px-1 sm:px-2 text-center">진도율</th>
               <th class="py-2 px-1 sm:px-2 text-center">완독일자</th>
@@ -382,10 +373,10 @@
     <!-- 2. 일별 현황 (일자별 막대그래프 + Top 5 강조 + 월별/요일별/시간대별 차트) -->
     <section class="space-y-4">
       <div class="flex items-center justify-between">
-        <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
-          <span>📈 통독 통계 및 패턴</span>
-          <span class="text-xs font-normal text-slate-600">일자별 • 월별 • 요일별 평균 • 시간대별 • 조별 통독량</span>
-        </h2>
+        <div class="w-full min-w-0 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+          <h2 class="text-base sm:text-lg font-bold text-slate-800 whitespace-nowrap shrink-0">📈 통독 통계 및 패턴</h2>
+          <p class="text-xs font-normal text-slate-600">일자별 • 월별 • 요일별 평균 • 시간대별 • 조별 통독량</p>
+        </div>
       </div>
 
       <!-- 상단: 일자별 막대그래프 (TOP 5 황금색 강조) + Top 5 / Bottom 5 랭킹 카드 -->
@@ -667,8 +658,6 @@
     // 대시보드 데이터 로드 (Supabase RPC 호출 또는 샘플 데이터 폴백)
     // =========================================================================
     async function loadDashboardData() {
-      const refreshIcon = document.getElementById('refreshIcon')
-      refreshIcon.classList.add('animate-spin')
 
       try {
         const { data, error } = await sb.rpc('get_bible_reading_stats', {
@@ -690,8 +679,6 @@
         console.error('데이터 조회 중 오류 발생:', err)
         document.getElementById('mockAlertBanner').classList.remove('hidden')
         dashboardData = generateMockStatsData(currentMinistryCd)
-      } finally {
-        refreshIcon.classList.remove('animate-spin')
       }
 
       // 화면 렌더링
