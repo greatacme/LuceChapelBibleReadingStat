@@ -68,6 +68,18 @@
       .personal-progress-table th:last-child,
       .personal-progress-table td:last-child { white-space: nowrap; }
     }
+    .finisher-tab {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      align-content: center;
+      justify-content: center;
+      column-gap: 0.25rem;
+      row-gap: 0.125rem;
+      min-width: 0;
+      padding-left: 0.25rem;
+      padding-right: 0.25rem;
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
@@ -338,15 +350,15 @@
       <div class="flex gap-2 p-1 bg-slate-100/80 rounded-xl">
         <button id="tabAll" onclick="switchFinisherTab('all')"
           class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition text-white bg-blue-900 shadow-sm">
-          🏆 전체 진도율 (완독자 <span id="tabAllCount">0</span>명)
+          <span class="whitespace-nowrap">🏆 전체 진도율</span> <span class="whitespace-nowrap">(완독자 <span id="tabAllCount">0</span>명)</span>
         </button>
         <button id="tabOt" onclick="switchFinisherTab('ot')"
           class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition text-slate-600 hover:text-amber-900 hover:bg-amber-50">
-          📜 구약 진도율 (완독자 <span id="tabOtCount">0</span>명)
+          <span class="whitespace-nowrap">📜 구약 진도율</span> <span class="whitespace-nowrap">(완독자 <span id="tabOtCount">0</span>명)</span>
         </button>
         <button id="tabNt" onclick="switchFinisherTab('nt')"
           class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition text-slate-600 hover:text-emerald-900 hover:bg-emerald-50">
-          ✝️ 신약 진도율 (완독자 <span id="tabNtCount">0</span>명)
+          <span class="whitespace-nowrap">✝️ 신약 진도율</span> <span class="whitespace-nowrap">(완독자 <span id="tabNtCount">0</span>명)</span>
         </button>
       </div>
 
