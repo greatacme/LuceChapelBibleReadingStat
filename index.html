@@ -390,8 +390,8 @@
     <section class="space-y-4">
       <div class="flex items-center justify-between">
         <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
-          <span>📈 일별 현황</span>
-          <span class="text-xs font-normal text-slate-600">일자별 • 월별 • 요일별 평균 • 조별 통독량</span>
+          <span>📈 통독 통계 및 패턴</span>
+          <span class="text-xs font-normal text-slate-600">일자별 • 월별 • 요일별 평균 • 시간대별 • 조별 통독량</span>
         </h2>
       </div>
 
@@ -459,7 +459,7 @@
 
       </div>
 
-      <p class="text-xs text-slate-600">일자별·TOP 5·요일별: 1인 하루 50장 이상 등록분 제외. 월별·조별: 대량 등록 포함.</p>
+      <p class="text-xs text-slate-600">일자별·TOP 5·요일별: 1인 하루 50장 이상 등록분 제외. 월별·시간대별·조별: 대량 등록 포함.</p>
       <!-- 하단: 월별 차트 + 요일별 차트 + 시간대별 차트 (3열 배치) -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         
@@ -491,6 +491,19 @@
           </div>
         </div>
 
+        <!-- 시간대별 통독량: 24시간을 넓게 표시 -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col md:col-span-2">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">시간대별 통독량</h3>
+              <p class="text-xs text-slate-600">KST 기준 등록 시간별 누적 읽은 장수 (00~23시)</p>
+            </div>
+            <span class="text-base">⏰</span>
+          </div>
+          <div class="relative flex-1 min-h-[240px]">
+            <canvas id="hourlyChart"></canvas>
+          </div>
+        </div>
       </div>
       <!-- 조별 총 장수 vs 1인당 평균 장수 차트 (2열 배치) -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -748,6 +761,7 @@
       renderDailyTrendBarChart(daily_trend || [], top_days || [])
       renderMonthlyChart(monthly || [])
       renderDowChart(day_of_week || [])
+      renderHourlyChart(hourly || [])
       renderGroupCharts(groups || [])
 
       // 4. 조별 완독률 현황 카드 렌더링 (섹션 카드형)
@@ -984,7 +998,7 @@
         data: {
           labels: hourlyList.map(h => h.hour_label || `${h.hour}시`),
           datasets: [{
-            label: '시간대별 완독 장수',
+            label: '시간대별 읽은 장수',
             data: hourlyList.map(h => h.chapters),
             backgroundColor: colors,
             borderRadius: 4,
