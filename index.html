@@ -1189,8 +1189,89 @@
     }
 
     // =========================================================================
-    // 완독자 명단 탭 전환 및 렌더링
+    // 완독자 존재 여부 확인 및 축하 폭죽 연출
     // =========================================================================
+    function checkHasFinishers(tab) {
+      if (!dashboardData) return false
+      const config = {
+        all: { count: 'total_count', total: 1189, key: 'all_finishers_cnt' },
+        ot: { count: 'ot_count', total: 929, key: 'ot_finishers_cnt' },
+        nt: { count: 'nt_count', total: 260, key: 'nt_finishers_cnt' }
+      }[tab]
+      if (!config) return false
+
+      if (dashboardData.overview && Number(dashboardData.overview[config.key] || 0) > 0) {
+        return true
+      }
+      if (Array.isArray(dashboardData.personal_progress)) {
+        if (dashboardData.personal_progress.some(p => Number(p[config.count] || 0) >= config.total)) {
+          return true
+        }
+      }
+      const countElId = { all: 'tabAllCount', ot: 'tabOtCount', nt: 'tabNtCount' }[tab]
+      const countText = document.getElementById(countElId)?.textContent?.replace(/[^0-9]/g, '')
+      if (countText && Number(countText) > 0) {
+        return true
+      }
+      return false
+    }
+
+    function triggerFinisherConfetti(tab) {
+      const confettiFn = window.confetti || (typeof confetti === 'function' ? confetti : null)
+      if (!confettiFn) return
+
+      let colors = ['#f59e0b', '#3b82f6', '#10b981', '#ec4899', '#8b5cf6', '#eab308']
+      if (tab === 'ot') {
+        colors = ['#d97706', '#f59e0b', '#fbbf24', '#fef08a', '#b45309']
+      } else if (tab === 'nt') {
+        colors = ['#059669', '#10b981', '#34d399', '#6ee7b7', '#facc15']
+      } else if (tab === 'all') {
+        colors = ['#1d4ed8', '#3b82f6', '#60a5fa', '#f59e0b', '#fbbf24', '#f43f5e']
+      }
+
+      // 중앙 축하 폭죽
+      confettiFn({
+        particleCount: 70,
+        spread: 80,
+        origin: { y: 0.65 },
+        colors: colors,
+        zIndex: 9999
+      })
+
+      // 좌측 캐논
+      confettiFn({
+        particleCount: 45,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0.05, y: 0.7 },
+        colors: colors,
+        zIndex: 9999
+      })
+
+      // 우측 캐논
+      confettiFn({
+        particleCount: 45,
+        angle: 120,
+        spread: 55,
+        origin: { x: 0.95, y: 0.7 },
+        colors: colors,
+        zIndex: 9999
+      })
+
+      // 250ms 후 2차 버스트 (입체감 있는 폭죽 효과 연출)
+      setTimeout(() => {
+        confettiFn({
+          particleCount: 50,
+          spread: 100,
+          startVelocity: 40,
+          origin: { y: 0.55 },
+          colors: colors,
+          zIndex: 9999
+        })
+      }, 250)
+    }
+
+    // 완독자 명단 탭 전환 및 렌더링
     function switchFinisherTab(tab) {
       currentFinisherTab = tab
 
@@ -1207,6 +1288,11 @@
       tabNt.className = (tab === 'nt') ? activeClass + 'bg-emerald-900' : inactiveClass
 
       renderFinishersTable()
+
+      // 해당 진도율 구분에 완독자가 있다면 폭죽 효과 발사
+      if (checkHasFinishers(tab)) {
+        triggerFinisherConfetti(tab)
+      }
     }
 
     function escapeHtml(value) {
