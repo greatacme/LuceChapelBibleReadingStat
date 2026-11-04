@@ -191,9 +191,15 @@ BEGIN
     LEFT JOIN pattern_records r ON r.read_date = c.read_date
     GROUP BY c.read_date
   ),
+  -- 일자별 차트 및 TOP 5만 2026-04-05부터 집계.
+  daily_report_counts AS (
+    SELECT read_date, chapters
+    FROM daily_counts
+    WHERE read_date >= DATE '2026-04-05'
+  ),
   daily_trend AS (
     SELECT COALESCE(JSONB_AGG(jsonb_build_object('date', read_date::TEXT, 'chapters', chapters) ORDER BY read_date), '[]'::JSONB) AS json_val
-    FROM daily_counts
+    FROM daily_report_counts
   ),
   top_days AS (
     SELECT COALESCE(JSONB_AGG(sub ORDER BY rank), '[]'::JSONB) AS json_val
@@ -201,7 +207,7 @@ BEGIN
       SELECT ROW_NUMBER() OVER (ORDER BY chapters DESC, read_date DESC) AS rank,
              read_date::TEXT AS date, chapters,
              (ARRAY['일','월','화','수','목','금','토'])[EXTRACT(DOW FROM read_date)::INT + 1] AS dow
-      FROM daily_counts ORDER BY chapters DESC, read_date DESC LIMIT 5
+      FROM daily_report_counts ORDER BY chapters DESC, read_date DESC LIMIT 5
     ) sub
   ),
   bottom_days AS (
@@ -210,7 +216,7 @@ BEGIN
       SELECT ROW_NUMBER() OVER (ORDER BY chapters ASC, read_date ASC) AS rank,
              read_date::TEXT AS date, chapters,
              (ARRAY['일','월','화','수','목','금','토'])[EXTRACT(DOW FROM read_date)::INT + 1] AS dow
-      FROM daily_counts ORDER BY chapters ASC, read_date ASC LIMIT 5
+      FROM daily_report_counts ORDER BY chapters ASC, read_date ASC LIMIT 5
     ) sub
   ),
   -- 14. 월별 차트
