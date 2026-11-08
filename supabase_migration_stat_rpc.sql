@@ -1,4 +1,5 @@
--- 전체 완료 기록 기준 집계: 날짜 필터 없음, 기간은 최초~최종 기록일(양 끝 포함).
+-- 기간 카드: 플랜 최초 날짜 ~ LEAST(최종 완료 기록일, 플랜 최종 날짜).
+-- 그 외 통계: 플랜 최초 날짜 ~ 최종 완료 기록일(양 끝 포함).
 -- ============================================================
 -- Luce Chapel Bible Reading 종합 통계 RPC 함수 (ver 1.3.2026.1103)
 -- ============================================================
@@ -124,11 +125,26 @@ BEGIN
     FROM ranked_records
     GROUP BY user_id
   ),
-  -- 8. 기간 범위: 대량 등록을 포함한 전체 완료 기록의 첫 기록일 ~ 마지막 기록일
+  -- 8. 시작일은 시즌 내 모든 그룹이 연결한 플랜의 가장 이른 날짜.
+  -- 사용자/기록이 없는 그룹의 플랜도 포함하며, 다른 시즌의 플랜은 제외.
+  plan_range AS (
+    SELECT MIN(date)::DATE AS start_date,
+           MAX(date)::DATE AS end_date
+    FROM tgt_plans
+  ),
   record_range AS (
-    SELECT MIN(read_date) AS start_date,
+    SELECT (SELECT start_date FROM plan_range) AS start_date,
            MAX(read_date) AS end_date
     FROM tgt_records
+  ),
+  -- 카드만 플랜 종료일로 제한. 기록이 없으면 종료일도 없음.
+  card_range AS (
+    SELECT rr.start_date,
+           CASE WHEN rr.end_date IS NOT NULL
+                THEN LEAST(rr.end_date, pr.end_date)
+           END AS end_date
+    FROM record_range rr
+    CROSS JOIN plan_range pr
   ),
   -- 9. 사용자별 누적 완독 현황
   user_progress AS (
@@ -152,9 +168,9 @@ BEGIN
   -- 10. 개요 요약
   overview_data AS (
     SELECT
-      rr.start_date::TEXT AS start_date,
-      rr.end_date::TEXT AS end_date,
-      COALESCE(rr.end_date - rr.start_date + 1, 0) AS elapsed_days,
+      cr.start_date::TEXT AS start_date,
+      cr.end_date::TEXT AS end_date,
+      GREATEST(0, COALESCE(cr.end_date - cr.start_date + 1, 0)) AS elapsed_days,
       (SELECT COUNT(*) FROM tgt_users) AS total_users,
       (SELECT COUNT(DISTINCT user_id) FROM tgt_records) AS active_users,
       (SELECT COUNT(*) FROM tgt_records) AS total_read_chapters,
@@ -178,6 +194,7 @@ BEGIN
            ELSE 0
       END AS all_rate
     FROM record_range rr
+    CROSS JOIN card_range cr
   ),
   -- 기간 전체를 달력으로 생성하여 무기록일도 0장으로 포함.
   calendar_days AS (
@@ -191,15 +208,9 @@ BEGIN
     LEFT JOIN pattern_records r ON r.read_date = c.read_date
     GROUP BY c.read_date
   ),
-  -- 일자별 차트 및 TOP 5만 2026-04-05부터 집계.
-  daily_report_counts AS (
-    SELECT read_date, chapters
-    FROM daily_counts
-    WHERE read_date >= DATE '2026-04-05'
-  ),
   daily_trend AS (
     SELECT COALESCE(JSONB_AGG(jsonb_build_object('date', read_date::TEXT, 'chapters', chapters) ORDER BY read_date), '[]'::JSONB) AS json_val
-    FROM daily_report_counts
+    FROM daily_counts
   ),
   top_days AS (
     SELECT COALESCE(JSONB_AGG(sub ORDER BY rank), '[]'::JSONB) AS json_val
@@ -207,7 +218,7 @@ BEGIN
       SELECT ROW_NUMBER() OVER (ORDER BY chapters DESC, read_date DESC) AS rank,
              read_date::TEXT AS date, chapters,
              (ARRAY['일','월','화','수','목','금','토'])[EXTRACT(DOW FROM read_date)::INT + 1] AS dow
-      FROM daily_report_counts ORDER BY chapters DESC, read_date DESC LIMIT 5
+      FROM daily_counts ORDER BY chapters DESC, read_date DESC LIMIT 5
     ) sub
   ),
   bottom_days AS (
@@ -216,7 +227,7 @@ BEGIN
       SELECT ROW_NUMBER() OVER (ORDER BY chapters ASC, read_date ASC) AS rank,
              read_date::TEXT AS date, chapters,
              (ARRAY['일','월','화','수','목','금','토'])[EXTRACT(DOW FROM read_date)::INT + 1] AS dow
-      FROM daily_report_counts ORDER BY chapters ASC, read_date ASC LIMIT 5
+      FROM daily_counts ORDER BY chapters ASC, read_date ASC LIMIT 5
     ) sub
   ),
   -- 14. 월별 차트
@@ -326,7 +337,7 @@ BEGIN
       'code_nm', (SELECT ministry_nm FROM ministry_info),
       'description', (SELECT ministry_desc FROM ministry_info)
     ),
-    'period_basis', 'record_span',
+    'period_basis', 'plan_start_capped_card_end',
     'overview', (SELECT TO_JSONB(overview_data.*) FROM overview_data),
     'daily_trend', (SELECT json_val FROM daily_trend),
     'top_days', (SELECT json_val FROM top_days),
