@@ -79,7 +79,27 @@
       min-width: 0;
       padding-left: 0.25rem;
       padding-right: 0.25rem;
+      padding-top: 0.8rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 3px solid #cbd5e1;
+      border-right: 1px solid #e2e8f0;
+      background: #f1f5f9;
+      color: #64748b;
+      font-weight: 600;
+      transition: color 150ms, border-color 150ms;
     }
+    .finisher-tab:last-child { border-right: 0; }
+    #tabAll { --tab-ink: #1e3a8a; --tab-bg: #dbeafe; --tab-hover: #eff6ff; }
+    #tabOt { --tab-ink: #78350f; --tab-bg: #fef3c7; --tab-hover: #fffbeb; }
+    #tabNt { --tab-ink: #064e3b; --tab-bg: #d1fae5; --tab-hover: #ecfdf5; }
+    .finisher-tab:hover { color: var(--tab-ink); background: var(--tab-hover); }
+    .finisher-tab[aria-selected="true"] {
+      color: var(--tab-ink);
+      border-bottom-color: var(--tab-ink);
+      background: var(--tab-bg);
+      font-weight: 800;
+    }
+    .finisher-tab:focus-visible { outline: 2px solid #60a5fa; outline-offset: -3px; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
@@ -331,23 +351,23 @@
       </div>
 
       <!-- 탭 선택 바 (전체 / 구약 / 신약) -->
-      <div class="flex gap-2 p-1 bg-slate-100/80 rounded-xl">
-        <button id="tabAll" onclick="switchFinisherTab('all')"
-          class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition text-white bg-blue-900 shadow-sm">
+      <div class="flex overflow-hidden rounded-t-xl border border-slate-200 border-b-0" role="tablist" aria-label="개인 진도율 구분">
+        <button id="tabAll" onclick="switchFinisherTab('all')" role="tab" aria-selected="true" aria-controls="progressTabPanel" tabindex="0" onkeydown="handleProgressTabKey(event, 'all')"
+          class="finisher-tab flex-1 text-xs sm:text-sm">
           <span class="whitespace-nowrap">🏆 전체 진도율</span> <span class="whitespace-nowrap">(완독자 <span id="tabAllCount">0</span>명)</span>
         </button>
-        <button id="tabOt" onclick="switchFinisherTab('ot')"
-          class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition text-slate-600 hover:text-amber-900 hover:bg-amber-50">
+        <button id="tabOt" onclick="switchFinisherTab('ot')" role="tab" aria-selected="false" aria-controls="progressTabPanel" tabindex="-1" onkeydown="handleProgressTabKey(event, 'ot')"
+          class="finisher-tab flex-1 text-xs sm:text-sm">
           <span class="whitespace-nowrap">📜 구약 진도율</span> <span class="whitespace-nowrap">(완독자 <span id="tabOtCount">0</span>명)</span>
         </button>
-        <button id="tabNt" onclick="switchFinisherTab('nt')"
-          class="finisher-tab flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition text-slate-600 hover:text-emerald-900 hover:bg-emerald-50">
+        <button id="tabNt" onclick="switchFinisherTab('nt')" role="tab" aria-selected="false" aria-controls="progressTabPanel" tabindex="-1" onkeydown="handleProgressTabKey(event, 'nt')"
+          class="finisher-tab flex-1 text-xs sm:text-sm">
           <span class="whitespace-nowrap">✝️ 신약 진도율</span> <span class="whitespace-nowrap">(완독자 <span id="tabNtCount">0</span>명)</span>
         </button>
       </div>
 
       <!-- 완독자 목록 테이블 -->
-      <div class="overflow-x-auto custom-scrollbar">
+      <div id="progressTabPanel" role="tabpanel" aria-labelledby="tabAll" class="overflow-x-auto custom-scrollbar !mt-0">
         <table class="personal-progress-table w-full table-fixed text-left border-collapse">
           <colgroup>
             <col style="width:8%"><col style="width:24%"><col style="width:24%"><col style="width:27%"><col style="width:17%">
@@ -534,7 +554,7 @@
         <span>Luce Chapel Bible Reading</span>
       </div>
       <div>
-        데이터베이스: ReadBible2026 Supabase 연동 • <span class="inline-block whitespace-nowrap">ver 1.3.2026.1103</span>
+        데이터베이스: ReadBible2026 Supabase 연동 • <span class="inline-block whitespace-nowrap">ver 1.4.2026.1113</span>
       </div>
     </div>
   </footer>
@@ -874,6 +894,17 @@
     }
 
     // 2. 월별 차트 (Bar Chart + 막대 위 숫자 표시)
+    // 각 차트 내 실적 범위에 따라 연한 파랑~진한 파랑으로 보간.
+    function performanceColors(values, low = [191, 219, 254], high = [29, 78, 216]) {
+      const numbers = values.map(value => Math.max(0, Number(value) || 0))
+      const min = Math.min(...numbers)
+      const max = Math.max(...numbers)
+      return numbers.map(value => {
+        const ratio = max === min ? (max > 0 ? 0.65 : 0) : (value - min) / (max - min)
+        return `rgb(${low.map((channel, i) => Math.round(channel + (high[i] - channel) * ratio)).join(', ')})`
+      })
+    }
+
     function renderMonthlyChart(data) {
       destroyChart('monthly')
       const ctx = document.getElementById('monthlyChart').getContext('2d')
@@ -884,7 +915,7 @@
           datasets: [{
             label: '월별 완독 장수',
             data: data.map(d => d.chapters),
-            backgroundColor: '#3b82f6',
+            backgroundColor: performanceColors(data.map(d => d.chapters)),
             borderRadius: 6,
             hoverBackgroundColor: '#1d4ed8'
           }]
@@ -914,7 +945,7 @@
     function renderDowChart(data) {
       destroyChart('dow')
       const ctx = document.getElementById('dowChart').getContext('2d')
-      const colors = ['#ef4444', '#3b82f6', '#3b82f6', '#3b82f6', '#3b82f6', '#3b82f6', '#10b981']
+      const colors = performanceColors(data.map(d => d.avg_chapters))
 
       activeCharts.dow = new Chart(ctx, {
         type: 'bar',
@@ -1021,7 +1052,7 @@
           datasets: [{
             label: '총 읽은 장수',
             data: totalSorted.map(g => g.total_chapters),
-            backgroundColor: '#1e3a8a',
+            backgroundColor: performanceColors(totalSorted.map(g => g.total_chapters)),
             borderRadius: 6,
             hoverBackgroundColor: '#2563eb'
           }]
@@ -1056,7 +1087,7 @@
           datasets: [{
             label: '1인당 평균 장수',
             data: avgSorted.map(g => g.avg_per_user),
-            backgroundColor: '#6366f1',
+            backgroundColor: performanceColors(avgSorted.map(g => g.avg_per_user), [199, 210, 254], [67, 56, 202]),
             borderRadius: 6,
             hoverBackgroundColor: '#4f46e5'
           }]
@@ -1272,20 +1303,30 @@
     }
 
     // 완독자 명단 탭 전환 및 렌더링
+    function handleProgressTabKey(event, tab) {
+      const tabs = ['all', 'ot', 'nt']
+      let index = tabs.indexOf(tab)
+      if (event.key === 'ArrowRight') index = (index + 1) % tabs.length
+      else if (event.key === 'ArrowLeft') index = (index + tabs.length - 1) % tabs.length
+      else if (event.key === 'Home') index = 0
+      else if (event.key === 'End') index = tabs.length - 1
+      else return
+      event.preventDefault()
+      switchFinisherTab(tabs[index])
+      document.getElementById({ all: 'tabAll', ot: 'tabOt', nt: 'tabNt' }[tabs[index]]).focus()
+    }
+
     function switchFinisherTab(tab) {
       currentFinisherTab = tab
 
-      // 탭 스타일 갱신
-      const tabAll = document.getElementById('tabAll')
-      const tabOt = document.getElementById('tabOt')
-      const tabNt = document.getElementById('tabNt')
-
-      const activeClass = 'finisher-tab flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition text-white shadow-sm '
-      const inactiveClass = 'finisher-tab flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition text-slate-600 hover:bg-slate-200/60 '
-
-      tabAll.className = (tab === 'all') ? activeClass + 'bg-blue-900' : inactiveClass
-      tabOt.className = (tab === 'ot') ? activeClass + 'bg-amber-900' : inactiveClass
-      tabNt.className = (tab === 'nt') ? activeClass + 'bg-emerald-900' : inactiveClass
+      const tabIds = { all: 'tabAll', ot: 'tabOt', nt: 'tabNt' }
+      Object.entries(tabIds).forEach(([key, id]) => {
+        const selected = key === tab
+        const element = document.getElementById(id)
+        element.setAttribute('aria-selected', String(selected))
+        element.tabIndex = selected ? 0 : -1
+      })
+      document.getElementById('progressTabPanel').setAttribute('aria-labelledby', tabIds[tab])
 
       renderFinishersTable()
 
