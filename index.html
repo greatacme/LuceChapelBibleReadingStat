@@ -554,7 +554,7 @@
         <span>Luce Chapel Bible Reading</span>
       </div>
       <div>
-        데이터베이스: ReadBible2026 Supabase 연동 • <span class="inline-block whitespace-nowrap">ver 1.4.2026.1113</span>
+        데이터베이스: ReadBible2026 Supabase 연동 • <span class="inline-block whitespace-nowrap">ver 1.5.2026.1122</span>
       </div>
     </div>
   </footer>
@@ -1378,7 +1378,7 @@
             ? `<span class="completion-name"><span aria-hidden="true">👑</span><span class="completion-name-text">${escapeHtml(item.nickname)}</span><span class="completion-badge">✦ 완독</span></span>`
             : escapeHtml(item.nickname)}</td>
           <td class="py-2 px-1 sm:px-2 text-slate-600">${escapeHtml(item.group_nm || '개인')}</td>
-          <td class="py-2 px-1 sm:px-2 text-right font-extrabold text-blue-900 whitespace-nowrap">${rate.toFixed(0)}%<span class="block text-[9px] sm:text-[11px] font-medium text-slate-500 mt-0.5">(${chapters.toLocaleString()}/${config.total.toLocaleString()})</span></td>
+          <td class="py-2 px-1 sm:px-2 text-right font-extrabold text-blue-900 whitespace-nowrap">${rate.toFixed(1)}%<span class="block text-[9px] sm:text-[11px] font-medium text-slate-500 mt-0.5">(${chapters.toLocaleString()}/${config.total.toLocaleString()})</span></td>
           <td class="py-2 px-1 sm:px-2 text-right text-slate-600 font-mono">${chapters >= config.total ? escapeHtml(item[config.date] ? String(item[config.date]).slice(5, 10) : '-') : '-'}</td>
         </tr>`
       }).join('')
